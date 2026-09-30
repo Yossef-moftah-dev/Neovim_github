@@ -1,0 +1,83 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ---------- Virtual environments ----------
+.venv/
+venv/
+env/
+
+# ---------- Secrets (never commit these) ----------
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+kaggle.json
+hf_token*
+
+# ---------- Data ----------
+data/*
+!data/.gitkeep
+*.csv
+*.parquet
+*.arrow
+*.jsonl
+
+# ---------- Models & checkpoints ----------
+checkpoints/
+runs/
+outputs/
+models/
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+*.onnx
+*.engine
+*.plan
+*.trt
+
+# ---------- Experiment tracking ----------
+mlruns/
+mlartifacts/
+wandb/
+lightning_logs/
+tensorboard/
+
+# ---------- BentoML ----------
+bentoml/bentos/
+*.bento
+
+# ---------- Notebooks ----------
+.ipynb_checkpoints/
+# Optional: keep notebook outputs out of git (use `nbstripout` instead if you prefer)
+
+# ---------- IDEs ----------
+.vscode/
+.idea/
+*.swp
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+
+# ---------- Logs & temp ----------
+*.log
+tmp/
+temp/
+
+# ---------- Keep these placeholders ----------
+!configs/*.yaml
+!docs/**/*.png
+!docs/**/*.md
