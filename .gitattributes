@@ -1,2 +1,1 @@
-data/* filter=lfs diff=lfs merge=lfs -text
-data/** filter=lfs diff=lfs merge=lfs -text
+/mnt/sda5/700_Software_Dev/300_Python/000[[:space:]]Fun[[:space:]]Area/Neovim_github/data/Arabic_Reviews_of_SHEIN/data/train-00000-of-00001.parquet filter=lfs diff=lfs merge=lfs -text
