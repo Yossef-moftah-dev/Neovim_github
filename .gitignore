@@ -26,3 +26,7 @@ ehthumbs.db
 
 # Outputs
 outputs/
+
+# uv
+.python-version
+
