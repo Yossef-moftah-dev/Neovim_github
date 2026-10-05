@@ -1,6 +1,7 @@
 # src/pipeline.py
 """Data processing pipeline."""
-
+import json
+import os
 import csv
 from pathlib import Path
 
@@ -29,3 +30,29 @@ def process_pipeline(input_path: Path) -> list[dict]:
     """Execute end-to-end data processing workflow."""
     raw = load_raw_data(input_path)
     return clean_and_normalize(raw)
+
+
+def load_payload(filepath: str) -> dict:
+    if not os.path.exists(filepath):
+        return {}
+    with open(filepath, "r", encoding="utf-8") as file:
+        return json.load(file)
+
+# ==========================================
+# WIP: Incomplete batch normalization logic
+# ==========================================
+def process_batch(records: list) -> list:
+    processed = []
+    for item in records:
+        raw_val = item.get("metric", 0)
+        
+        # Half-finished validation and scaling logic
+        if raw_val < 0:
+            print(f"[WARN] Dropping negative metric: {raw_val}")
+            continue
+            
+        scaled = raw_val * 1.42
+        # TODO: Implement token retry & error handling
+        # processed.append({
+        #     "id": item["id"],
+        #     "score":
