@@ -7,7 +7,12 @@ authors = [
     { name = "Yossef Moftah", email = "yossefmoftah000@gmail.com" }
 ]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "fastapi>=0.142.2",
+    "torch>=2.14.1",
+    "transformers>=5.18.0",
+    "uvicorn>=0.54.0",
+]
 
 [project.scripts]
 neovim-github = "neovim_github:main"
