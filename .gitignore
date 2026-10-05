@@ -23,3 +23,6 @@ ENV/
 Thumbs.db
 ehthumbs.db
 [Dd]esktop.ini
+
+# Outputs
+/output/
