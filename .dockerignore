@@ -4,9 +4,10 @@ venv/
 env/
 ENV/
 
-# Exclude raw datasets and exploratory notebooks
+# Exclude raw datasets, models, and exploratory notebooks
 data/
 notebooks/
+outputs/
 
 # Exclude git and development caches
 .git/
