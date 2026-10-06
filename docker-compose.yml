@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     image: prodml-service:latest
+    pull_policy: build
     container_name: prodml-service
     ports:
       - "8000:8000"

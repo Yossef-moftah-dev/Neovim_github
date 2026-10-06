@@ -27,9 +27,11 @@ def sample_arabic_texts() -> list[str]:
 
 @pytest.fixture(scope="session")
 def model_tokenizer() -> AutoTokenizer:
-    """Pretrained AraBERT tokenizer from local artifacts."""
+    """Pretrained AraBERT tokenizer from local artifacts or HuggingFace."""
     model_dir = Path(__file__).resolve().parent.parent / "outputs" / "final_model"
-    return AutoTokenizer.from_pretrained(str(model_dir))
+    if model_dir.exists() and (model_dir / "tokenizer_config.json").exists():
+        return AutoTokenizer.from_pretrained(str(model_dir))
+    return AutoTokenizer.from_pretrained("aubmindlab/bert-base-arabertv02")
 
 
 @pytest.fixture(scope="session")

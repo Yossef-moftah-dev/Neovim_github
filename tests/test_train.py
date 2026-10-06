@@ -14,8 +14,14 @@ from prodml.train import (
 )
 
 
-def test_calculate_artifact_hash_real_dir() -> None:
+def test_calculate_artifact_hash_real_dir(tmp_path: Path) -> None:
     model_dir = Path(__file__).resolve().parent.parent / "outputs" / "final_model"
+    if not model_dir.exists() or not any(model_dir.iterdir()):
+        mock_dir = tmp_path / "mock_model"
+        mock_dir.mkdir()
+        (mock_dir / "config.json").write_text('{"test": true}', encoding="utf-8")
+        model_dir = mock_dir
+
     digest = calculate_artifact_hash(model_dir)
     assert isinstance(digest, str)
     assert len(digest) == 64  # SHA-256 is 64 hex characters

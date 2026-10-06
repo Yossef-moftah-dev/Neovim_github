@@ -105,7 +105,10 @@ async def lifespan(app: FastAPI):
     """Manage application lifespan by loading model into memory once at startup."""
     settings = get_settings()
     configure_logging(settings.service.log_level)
-    logger.info("Initializing application startup...")
+    if getattr(app.state, "predictor", None) is not None:
+        logger.info("Predictor already initialized in application state.")
+        yield
+        return
 
     try:
         predictor = SentimentPredictor.load(
