@@ -13,7 +13,7 @@ Production-ready Arabic sentiment classification API powered by AraBERT, package
 
 ```bash
 # 1. Clone repository
-git clone git@github.com:Yossef-moftah-dev/Neovim_github.git && cd Neovim_github
+git clone https://github.com/Yossef-moftah-dev/Neovim_github.git && cd Neovim_github
 
 # 2. Build and start containerized service
 docker compose up -d --build
