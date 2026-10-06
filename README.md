@@ -1,6 +1,6 @@
 # ProdML — Arabic Sentiment Analysis Service
 
-[![CI Test Coverage](https://img.shields.io/badge/Coverage-95.9%25-brightgreen.svg)](reports/module-1.md)
+[![CI Test Coverage](https://img.shields.io/badge/Coverage-95.9%25-brightgreen.svg)](#-local-development-workflow)
 [![Python](https://img.shields.io/badge/Python-3.12%20%7C%203.14-blue.svg)](pyproject.toml)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.142+-009688.svg)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg)](docker/Dockerfile)
@@ -188,9 +188,3 @@ docker compose up -d
 # Stop container
 docker compose down
 ```
-
----
-
-## 📄 Milestone Report & Assessment
-
-For the detailed Module 1 report, architecture breakdown, test logit parity results, and MLOps maturity assessment, refer to [reports/module-1.md](reports/module-1.md).
