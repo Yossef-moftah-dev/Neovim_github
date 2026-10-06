@@ -107,6 +107,19 @@ uv run ruff format --check src/ tests/
 
 ---
 
+## 📥 Model Artifacts
+
+Model weights are automatically fetched from [Google Drive](https://drive.google.com/drive/folders/1yeJcg-nrci3BDq01p9-pjtciv1c4g9rc) on first startup by Docker Compose.
+
+To download weights manually for local development:
+```bash
+./scripts/download_model.sh
+# Or via Python package CLI:
+uv run prodml-download
+```
+
+---
+
 ## 💻 Local Development (Without Docker)
 
 Run the FastAPI development server directly:

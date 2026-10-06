@@ -64,6 +64,17 @@ if ! getent group docker >/dev/null; then
 fi
 sudo usermod -aG docker "$TARGET_USER"
 
-echo "=== Docker installed successfully ==="
+# Configure 2GB swap space if no swap is active (vital for builds on t2/t3 instances)
+if [ "$(swapon --show | wc -l)" -le 1 ]; then
+    echo "Configuring 2GB swap space..."
+    sudo fallocate -l 2G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
+    sudo chmod 600 /swapfile
+    sudo mkswap /swapfile
+    sudo swapon /swapfile
+    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab >/dev/null
+    echo "✓ 2GB swap file enabled."
+fi
+
+echo "=== Docker & Environment installed successfully ==="
 echo "Run 'newgrp docker' or log out and back in to apply group permissions."
 docker --version

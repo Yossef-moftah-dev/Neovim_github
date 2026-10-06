@@ -16,10 +16,12 @@ dependencies = [
     "onnx>=1.23.0",
     "onnxruntime>=1.20.0",
     "numpy>=1.26.0",
+    "gdown>=6.4.0",
 ]
 
 [project.scripts]
 prodml-api = "prodml.api:start"
+prodml-download = "prodml.download:main"
 
 [project.optional-dependencies]
 dev = [

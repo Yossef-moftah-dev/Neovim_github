@@ -1,5 +1,25 @@
 services:
+  download-model:
+    image: python:3.12-slim
+    container_name: prodml-model-downloader
+    volumes:
+      - ./outputs/final_model:/outputs/final_model
+    command: >
+      sh -c "
+        if [ ! -f /outputs/final_model/model.safetensors ]; then
+          echo 'Downloading fine-tuned weights from Google Drive...' &&
+          pip install --no-cache-dir --quiet gdown &&
+          python -m gdown --folder https://drive.google.com/drive/folders/1yeJcg-nrci3BDq01p9-pjtciv1c4g9rc -O /outputs/final_model;
+        else
+          echo 'Model weights already present.';
+        fi
+      "
+    restart: "no"
+
   prodml-service:
+    depends_on:
+      download-model:
+        condition: service_completed_successfully
     build:
       context: .
       dockerfile: docker/Dockerfile
