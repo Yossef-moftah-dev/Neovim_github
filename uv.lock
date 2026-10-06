@@ -986,6 +986,7 @@ dependencies = [
 [package.optional-dependencies]
 dev = [
     { name = "httpx" },
+    { name = "onnxscript" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
@@ -1007,6 +1008,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "onnx", specifier = ">=1.23.0" },
     { name = "onnxruntime", specifier = ">=1.20.0" },
+    { name = "onnxscript", marker = "extra == 'dev'", specifier = ">=0.7.2" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1.1" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.0.0" },
