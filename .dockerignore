@@ -1,0 +1,27 @@
+# Exclude virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Exclude raw datasets and exploratory notebooks
+data/
+notebooks/
+
+# Exclude git and development caches
+.git/
+.gitignore
+.github/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Exclude temporary python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Exclude development reports and documentation drafts
+reports/
+tests/
