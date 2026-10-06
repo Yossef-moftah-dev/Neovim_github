@@ -30,3 +30,8 @@ outputs/
 # uv
 .python-version
 
+# Test and coverage
+.coverage
+.pytest_cache/
+htmlcov/
+.ruff_cache/
