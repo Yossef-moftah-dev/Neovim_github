@@ -75,6 +75,16 @@ if [ "$(swapon --show | wc -l)" -le 1 ]; then
     echo "✓ 2GB swap file enabled."
 fi
 
-echo "=== Docker & Environment installed successfully ==="
+# Install Astral uv (Python package and project manager)
+echo "Installing uv..."
+curl -LsSf https://astral.sh/uv/install.sh | sudo env UV_INSTALL_DIR="/usr/local/bin" sh
+
+# Enable bash completion for uv if bash_completion directory exists
+if [ -d /etc/bash_completion.d ]; then
+    sudo /usr/local/bin/uv generate-shell-completion bash | sudo tee /etc/bash_completion.d/uv >/dev/null 2>&1 || true
+fi
+
+echo "=== Docker, uv & Environment installed successfully ==="
 echo "Run 'newgrp docker' or log out and back in to apply group permissions."
 docker --version
+uv --version
