@@ -83,6 +83,13 @@ def download_model(
             f"Model download completed but artifacts verification failed in {target_dir}"
         )
 
+    # Ensure files are readable by non-root containers
+    for path in target_dir.rglob("*"):
+        try:
+            path.chmod(0o644 if path.is_file() else 0o755)
+        except OSError:
+            pass
+
     logger.info("Model artifacts successfully downloaded and verified in %s.", target_dir)
     return target_dir
 

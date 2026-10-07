@@ -47,4 +47,5 @@ else
     python3 -m gdown "https://drive.google.com/uc?id=1s43JYX99ldlbQH7NVEXWiNvAnQNUX0u6" -O "$TARGET_DIR/tokenizer_config.json"
     ls -lh "$TARGET_DIR"
 fi
+chmod -R a+rX "$TARGET_DIR" 2>/dev/null || true
 echo "Done!"

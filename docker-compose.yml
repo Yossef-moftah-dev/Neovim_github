@@ -12,7 +12,8 @@ services:
           python -m gdown --folder https://drive.google.com/drive/folders/1yeJcg-nrci3BDq01p9-pjtciv1c4g9rc -O /outputs/final_model;
         else
           echo 'Model weights already present.';
-        fi
+        fi &&
+        chmod -R a+rX /outputs/final_model
       "
     restart: "no"
 
