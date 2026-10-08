@@ -1,9 +1,11 @@
 # ProdML — Arabic Sentiment Analysis Service
 
+[![CI](https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/actions/workflows/ci.yml/badge.svg)](https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/Tests-37%20Passed-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/Coverage-88%25-brightgreen.svg)](tests/)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](pyproject.toml)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](docker/Dockerfile)
+[![MLOps Level 1](https://img.shields.io/badge/MLOps-Level%201%20Maturity-blueviolet.svg)](reports/module-1.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Production-ready Arabic sentiment classification API powered by AraBERT, packaged into an installable Python module (`prodml`), fully covered with tests, and containerized with Docker.
@@ -132,6 +134,12 @@ To stop Docker:
 ```bash
 docker compose down
 ```
+
+---
+
+## 📊 MLOps Maturity Assessment
+
+Detailed engineering report and Level 0 → Level 1 maturity self-assessment is available at [`reports/module-1.md`](reports/module-1.md).
 
 ---
 
