@@ -1,0 +1,58 @@
+schema: '2.0'
+stages:
+  prepare_data:
+    cmd: python scripts/prepare_data.py --input 
+      data/Arabic_Reviews_of_SHEIN/train-00000-of-00001.parquet --output-dir 
+      data/processed
+    deps:
+    - path: data/Arabic_Reviews_of_SHEIN/train-00000-of-00001.parquet
+      hash: md5
+      md5: 4bafda31357d38de02a766ab1461a241
+      size: 240066
+    - path: scripts/prepare_data.py
+      hash: md5
+      md5: a87268847ea2a1c571a36fc11f628916
+      size: 2853
+    - path: src/prodml/data.py
+      hash: md5
+      md5: 9b351148787cfa9a2c649a780a4ffba7
+      size: 2211
+    - path: src/prodml/features.py
+      hash: md5
+      md5: 6720868029f2c8b9a383071e421f56e3
+      size: 2384
+    outs:
+    - path: data/processed/train.csv
+      hash: md5
+      md5: c104a3f9adb151f180145a6cca4061d0
+      size: 411787
+    - path: data/processed/val.csv
+      hash: md5
+      md5: 7b5c63ce9852a7fa9bd3888a1287df93
+      size: 95621
+  evaluate:
+    cmd: python scripts/run_pipeline_train.py --train-data 
+      data/processed/train.csv --val-data data/processed/val.csv --metrics 
+      reports/eval_metrics.json
+    deps:
+    - path: data/processed/train.csv
+      hash: md5
+      md5: c104a3f9adb151f180145a6cca4061d0
+      size: 411787
+    - path: data/processed/val.csv
+      hash: md5
+      md5: 7b5c63ce9852a7fa9bd3888a1287df93
+      size: 95621
+    - path: scripts/run_pipeline_train.py
+      hash: md5
+      md5: b7c33bdb2d6482af2987f388f7e22e0b
+      size: 4331
+    - path: src/prodml/train.py
+      hash: md5
+      md5: 5f79f7514ef3463c487775402cee6bd6
+      size: 7871
+    outs:
+    - path: reports/eval_metrics.json
+      hash: md5
+      md5: a7acd8191150c34e87c1b44e301d7ae5
+      size: 212

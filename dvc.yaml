@@ -1,0 +1,22 @@
+stages:
+  prepare_data:
+    cmd: python scripts/prepare_data.py --input data/Arabic_Reviews_of_SHEIN/train-00000-of-00001.parquet --output-dir data/processed
+    deps:
+      - data/Arabic_Reviews_of_SHEIN/train-00000-of-00001.parquet
+      - scripts/prepare_data.py
+      - src/prodml/data.py
+      - src/prodml/features.py
+    outs:
+      - data/processed/train.csv
+      - data/processed/val.csv
+
+  evaluate:
+    cmd: python scripts/run_pipeline_train.py --train-data data/processed/train.csv --val-data data/processed/val.csv --metrics reports/eval_metrics.json
+    deps:
+      - data/processed/train.csv
+      - data/processed/val.csv
+      - scripts/run_pipeline_train.py
+      - src/prodml/train.py
+    metrics:
+      - reports/eval_metrics.json:
+          cache: false

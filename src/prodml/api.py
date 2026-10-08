@@ -84,6 +84,9 @@ class MetadataResponse(BaseModel):
     artifact_hash: str = Field(..., description="Deterministic SHA-256 hash of model weights")
     num_classes: int = Field(..., description="Number of target classes")
     classes: list[str] = Field(..., description="Class labels")
+    model_uri: str | None = Field(default=None, description="MLflow registry or file URI")
+    model_version: str | None = Field(default=None, description="Model registry version")
+    model_stage: str | None = Field(default=None, description="Model registry lifecycle stage")
 
 
 class PredictionResponse(BaseModel):
@@ -93,6 +96,16 @@ class PredictionResponse(BaseModel):
     confidence: float
     probabilities: dict[str, float]
     latency_ms: float | None = None
+
+
+class ReloadResponse(BaseModel):
+    """Model reload output schema."""
+
+    status: str = Field(..., description="Reload status ('reloaded')")
+    model_uri: str = Field(..., description="Active model URI")
+    model_version: str | None = Field(default=None, description="Model registry version")
+    model_stage: str | None = Field(default=None, description="Model registry stage")
+    artifact_hash: str = Field(..., description="Artifact hash of newly loaded model")
 
 
 # ---------------------------------------------------------
@@ -111,14 +124,22 @@ async def lifespan(app: FastAPI):
         return
 
     try:
+        target_uri = settings.model.model_uri or settings.model.model_dir
         predictor = SentimentPredictor.load(
-            model_dir=settings.model.model_dir,
+            model_dir=target_uri,
             device=settings.model.device,
+            tracking_uri=settings.model.mlflow_tracking_uri,
         )
         app.state.predictor = predictor
+        app.state.model_uri = getattr(predictor, "model_uri", str(target_uri))
+        app.state.model_version = getattr(predictor, "model_version", None)
+        app.state.model_stage = getattr(predictor, "model_stage", None)
         app.state.artifact_hash = calculate_artifact_hash(settings.model.model_dir)
         logger.info(
-            "Model successfully resident in memory. Artifact hash: %s",
+            "Model successfully resident in memory from %s (v: %s, stage: %s). Artifact hash: %s",
+            app.state.model_uri,
+            app.state.model_version,
+            app.state.model_stage,
             app.state.artifact_hash,
         )
     except Exception as exc:  # noqa: BLE001
@@ -195,6 +216,10 @@ def create_app() -> FastAPI:
             list(predictor.id2label.values()) if predictor else list(cfg.model.id2label.values())
         )
 
+        model_uri = getattr(request.app.state, "model_uri", str(cfg.model.model_uri))
+        model_version = getattr(request.app.state, "model_version", None)
+        model_stage = getattr(request.app.state, "model_stage", None)
+
         return MetadataResponse(
             name=cfg.service.app_name,
             version=__version__,
@@ -203,7 +228,44 @@ def create_app() -> FastAPI:
             artifact_hash=artifact_hash,
             num_classes=len(classes),
             classes=classes,
+            model_uri=model_uri,
+            model_version=model_version,
+            model_stage=model_stage,
         )
+
+    @application.post(
+        "/model/reload",
+        response_model=ReloadResponse,
+        summary="Code-Free Dynamic Model Reload from Registry or URI",
+    )
+    def reload_model(request: Request, model_uri: str | None = None) -> ReloadResponse:
+        cfg = get_settings()
+        target_uri = model_uri or cfg.model.model_uri or cfg.model.model_dir
+        try:
+            new_predictor = SentimentPredictor.load(
+                model_dir=target_uri,
+                device=cfg.model.device,
+                tracking_uri=cfg.model.mlflow_tracking_uri,
+            )
+            request.app.state.predictor = new_predictor
+            request.app.state.model_uri = getattr(new_predictor, "model_uri", str(target_uri))
+            request.app.state.model_version = getattr(new_predictor, "model_version", None)
+            request.app.state.model_stage = getattr(new_predictor, "model_stage", None)
+            request.app.state.artifact_hash = calculate_artifact_hash(
+                getattr(new_predictor.config, "model_dir", cfg.model.model_dir)
+            )
+            return ReloadResponse(
+                status="reloaded",
+                model_uri=request.app.state.model_uri,
+                model_version=request.app.state.model_version,
+                model_stage=request.app.state.model_stage,
+                artifact_hash=request.app.state.artifact_hash,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to reload model: {exc}",
+            )
 
     @application.post(
         "/predict",

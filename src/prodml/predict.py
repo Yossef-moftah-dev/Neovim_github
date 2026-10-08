@@ -47,6 +47,9 @@ class SentimentPredictor:
                 getattr(self.model.config, "id2label", None) or self.config.id2label
             ).items()
         }
+        self.model_uri: str = getattr(config, "model_uri", "local") if config else "local"
+        self.model_version: str | None = None
+        self.model_stage: str | None = None
         logger.info("Initialized SentimentPredictor on device: %s", self.device)
 
     @classmethod
@@ -54,21 +57,82 @@ class SentimentPredictor:
         cls,
         model_dir: Path | str | None = None,
         device: str | None = None,
+        tracking_uri: str | None = None,
     ) -> SentimentPredictor:
-        """Instantiate and load weights from disk into memory.
+        """Instantiate and load weights from disk or MLflow Model Registry into memory.
+
+        Supports local paths as well as MLflow registry URIs (e.g. models:/<Name>/Production).
 
         Args:
-            model_dir: Directory containing model weights and tokenizer config.
+            model_dir: Directory containing model weights or MLflow stage URI.
             device: Target execution device ('cpu' or 'cuda').
+            tracking_uri: Optional MLflow tracking server URI.
         """
         settings = get_settings()
         cfg = settings.model.model_copy()
-        if model_dir is not None:
-            cfg.model_dir = Path(model_dir)
         if device is not None:
             cfg.device = device
 
-        target_dir = cfg.model_dir
+        target_source = model_dir if model_dir is not None else cfg.model_uri
+        target_source_str = str(target_source)
+
+        model_version: str | None = None
+        model_stage: str | None = None
+
+        if target_source_str.startswith(("models:/", "runs:/")):
+            import mlflow
+            from mlflow.tracking import MlflowClient
+
+            trk_uri = tracking_uri or cfg.mlflow_tracking_uri
+            mlflow.set_tracking_uri(trk_uri)
+            logger.info("Resolving model from MLflow URI %s via %s", target_source_str, trk_uri)
+
+            # Query registry metadata if models:/ URI
+            if target_source_str.startswith("models:/"):
+                parts = target_source_str.replace("models:/", "").strip("/").split("/")
+                reg_name = parts[0]
+                stage_or_ver = parts[1] if len(parts) > 1 else "Production"
+                try:
+                    client = MlflowClient(tracking_uri=trk_uri)
+                    if stage_or_ver.isdigit():
+                        mv = client.get_model_version(reg_name, stage_or_ver)
+                        model_version = mv.version
+                        model_stage = mv.current_stage
+                    else:
+                        versions = client.get_latest_versions(reg_name, stages=[stage_or_ver])
+                        if versions:
+                            model_version = versions[0].version
+                            model_stage = versions[0].current_stage
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Could not query model registry metadata: %s", exc)
+
+            try:
+                downloaded_path = Path(
+                    mlflow.artifacts.download_artifacts(artifact_uri=target_source_str)
+                )
+                if (downloaded_path / "config.json").exists() or (
+                    downloaded_path / "model.safetensors"
+                ).exists():
+                    target_dir = downloaded_path
+                else:
+                    candidates = [
+                        p
+                        for p in downloaded_path.iterdir()
+                        if p.is_dir() and (p / "config.json").exists()
+                    ]
+                    target_dir = candidates[0] if candidates else downloaded_path
+                cfg.model_dir = target_dir
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "Failed to download from MLflow URI %s (%s). Falling back to local model_dir",
+                    target_source_str,
+                    exc,
+                )
+                target_dir = cfg.model_dir
+        else:
+            target_dir = Path(target_source)
+            cfg.model_dir = target_dir
+
         if not target_dir.exists():
             raise FileNotFoundError(f"Model directory does not exist: {target_dir}")
 
@@ -76,7 +140,11 @@ class SentimentPredictor:
         tokenizer = AutoTokenizer.from_pretrained(target_dir)
         model = AutoModelForSequenceClassification.from_pretrained(target_dir)
 
-        return cls(model=model, tokenizer=tokenizer, config=cfg)
+        predictor = cls(model=model, tokenizer=tokenizer, config=cfg)
+        predictor.model_uri = target_source_str
+        predictor.model_version = model_version
+        predictor.model_stage = model_stage
+        return predictor
 
     def is_loaded(self) -> bool:
         """Check if model and tokenizer are resident in memory."""
