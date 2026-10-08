@@ -88,3 +88,44 @@ echo "=== Docker, uv & Environment installed successfully ==="
 echo "Run 'newgrp docker' or log out and back in to apply group permissions."
 docker --version
 uv --version
+
+# Deploy / Launch ProdML stack
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")"
+REPO_DIR="$HOME/arabic-sentiment-arabert"
+
+if [ -f "$SCRIPT_DIR/docker-compose.yml" ]; then
+    APP_DIR="$SCRIPT_DIR"
+elif [ -d "$REPO_DIR" ]; then
+    APP_DIR="$REPO_DIR"
+    echo "Updating repository in $APP_DIR..."
+    git -C "$APP_DIR" pull origin main || true
+else
+    echo "Cloning repository to $REPO_DIR..."
+    git clone https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert.git "$REPO_DIR"
+    APP_DIR="$REPO_DIR"
+fi
+
+echo "========================================================================"
+echo "Starting ProdML Docker Compose stack in $APP_DIR..."
+echo "========================================================================"
+sudo -u "$TARGET_USER" docker compose -f "$APP_DIR/docker-compose.yml" up -d --build
+
+echo "Waiting for services to become healthy..."
+sleep 15
+sudo -u "$TARGET_USER" docker compose -f "$APP_DIR/docker-compose.yml" ps
+
+# Detect Public IP
+PUBLIC_IP=$(curl -s --connect-timeout 3 http://checkip.amazonaws.com 2>/dev/null || curl -s --connect-timeout 3 ifconfig.me 2>/dev/null || echo "YOUR_EC2_PUBLIC_IP")
+
+echo "========================================================================"
+echo "🚀 ProdML Platform Live & Directly Accessible Remotely!"
+echo "========================================================================"
+echo "Direct Browser URLs (No SSH Tunnel or Keys Needed):"
+echo "  • MLflow Tracking UI: http://${PUBLIC_IP}:5000"
+echo "  • MinIO Web Console:  http://${PUBLIC_IP}:9001 (User: minioadmin / minioadmin)"
+echo "  • MinIO S3 Endpoint:  http://${PUBLIC_IP}:9000"
+echo "  • FastAPI Swagger UI: http://${PUBLIC_IP}:8000/docs"
+echo "  • FastAPI Health:     http://${PUBLIC_IP}:8000/health"
+echo "========================================================================"
+echo "Ensure your AWS Security Group allows Inbound TCP on ports 5000, 8000, 9000, 9001."
+echo "========================================================================"
