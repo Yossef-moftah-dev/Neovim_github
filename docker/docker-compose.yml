@@ -21,7 +21,7 @@ services:
 
   minio:
     build:
-      context: .
+      context: ..
       dockerfile: docker/Dockerfile.minio
     image: prodml-minio:latest
     container_name: prodml-minio
@@ -67,7 +67,7 @@ services:
 
   mlflow-server:
     build:
-      context: .
+      context: ..
       dockerfile: docker/Dockerfile.mlflow
     image: prodml-mlflow-server:latest
     container_name: prodml-mlflow-server
@@ -105,7 +105,7 @@ services:
     image: python:3.12-slim
     container_name: prodml-model-downloader
     volumes:
-      - ./outputs/final_model:/outputs/final_model
+      - ../outputs/final_model:/outputs/final_model
     command: >
       sh -c "
         if [ ! -f /outputs/final_model/model.safetensors ]; then
@@ -128,7 +128,7 @@ services:
       mlflow-server:
         condition: service_healthy
     build:
-      context: .
+      context: ..
       dockerfile: docker/Dockerfile
     image: prodml-service:latest
     container_name: prodml-service
@@ -144,7 +144,7 @@ services:
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
       - LOG_LEVEL=INFO
     volumes:
-      - ./outputs/final_model:/app/outputs/final_model:ro
+      - ../outputs/final_model:/app/outputs/final_model:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
