@@ -12,7 +12,7 @@ def test_default_config() -> None:
     settings = get_settings()
     assert isinstance(settings, AppSettings)
     assert settings.service.app_name == "prodml-arabic-sentiment"
-    assert settings.service.app_version == "0.1.0"
+    assert settings.service.app_version == "0.2.0"
     assert settings.model.max_length == 128
     assert len(settings.model.id2label) == 3
 

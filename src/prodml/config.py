@@ -19,6 +19,19 @@ class ModelConfig(BaseModel):
             os.getenv("MODEL_DIR", str(DEFAULT_PROJECT_ROOT / "outputs" / "final_model"))
         )
     )
+    model_uri: str = Field(
+        default_factory=lambda: os.getenv(
+            "MODEL_URI",
+            os.getenv("MODEL_DIR", str(DEFAULT_PROJECT_ROOT / "outputs" / "final_model")),
+        )
+    )
+    mlflow_tracking_uri: str = Field(
+        default_factory=lambda: os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+    )
+    registry_model_name: str = Field(
+        default_factory=lambda: os.getenv("REGISTRY_MODEL_NAME", "arabic-sentiment-model")
+    )
+    registry_stage: str = Field(default_factory=lambda: os.getenv("REGISTRY_STAGE", "Production"))
     model_name: str = "aubmindlab/bert-base-arabertv02"
     max_length: int = 128
     device: str = Field(
@@ -50,7 +63,7 @@ class ServiceConfig(BaseModel):
     """Configuration for FastAPI service and logging."""
 
     app_name: str = "prodml-arabic-sentiment"
-    app_version: str = "0.1.0"
+    app_version: str = "0.2.0"
     host: str = Field(default_factory=lambda: os.getenv("HOST", "0.0.0.0"))
     port: int = Field(default_factory=lambda: int(os.getenv("PORT", "8000")))
     log_level: str = Field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))

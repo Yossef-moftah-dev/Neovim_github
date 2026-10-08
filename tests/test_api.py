@@ -29,7 +29,7 @@ def test_metadata_endpoint(client: TestClient) -> None:
     response = client.get("/metadata")
     assert response.status_code == 200
     data = response.json()
-    assert data["version"] == "0.1.0"
+    assert data["version"] == "0.2.0"
     assert data["framework"] == "PyTorch / HuggingFace Transformers"
     assert data["num_classes"] == 3
     assert data["classes"] == ["Negative", "Neutral", "Positive"]
