@@ -31,7 +31,7 @@ def stars_to_sentiment(rating: float | str) -> int:
     """
     try:
         val = int(float(rating))
-    except ValueError, TypeError:
+    except (ValueError, TypeError):
         return 1
 
     if val <= 2:
