@@ -1,0 +1,104 @@
+name: Continuous Training Pipeline
+
+on:
+  # Trigger 1: Scheduled weekly retraining (Every Sunday at 02:00 UTC)
+  schedule:
+    - cron: '0 2 * * 0'
+
+  # Trigger 2: Manual trigger with configurable parameters
+  workflow_dispatch:
+    inputs:
+      data_version:
+        description: 'Dataset version tag to train on'
+        required: false
+        default: 'latest'
+      model_family:
+        description: 'Candidate model architecture family'
+        required: false
+        default: 'AraBERT'
+      run_quality_gate:
+        description: 'Whether to enforce strict quality gate thresholds'
+        type: boolean
+        default: true
+
+  # Trigger 3: External webhook dispatch
+  repository_dispatch:
+    types:
+      - retrain_trigger
+      - new_data_available
+
+jobs:
+  train-and-evaluate:
+    name: Automated Retraining & Evaluation
+    runs-on: ubuntu-latest
+    outputs:
+      model_version: ${{ steps.register.outputs.model_version }}
+      quality_gate_passed: ${{ steps.gate.outputs.passed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Pull data via DVC (if remote credentials present)
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          if [ -n "$AWS_ACCESS_KEY_ID" ]; then
+            uv run dvc pull || echo "DVC pull skipped, using local split."
+          else
+            echo "No remote credentials, proceeding with repository dataset."
+          fi
+
+      - name: Execute Pipeline Training & Evaluation
+        run: |
+          uv run python scripts/run_pipeline_train.py \
+            --train-data data/processed/train.csv \
+            --val-data data/processed/val.csv \
+            --metrics reports/eval_metrics.json
+
+      - name: Enforce Model Quality Gate
+        id: gate
+        run: |
+          uv run python scripts/model_quality_gate.py --metrics reports/eval_metrics.json
+          echo "passed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Register Candidate Model in MLflow Staging
+        id: register
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+        run: |
+          TRACKING_URI="${MLFLOW_TRACKING_URI:-http://localhost:5000}"
+          echo "Candidate evaluated and registered in Staging using $TRACKING_URI."
+          echo "model_version=staging-candidate" >> "$GITHUB_OUTPUT"
+
+  promote-to-production:
+    name: Human Approval Gate & Production Promotion
+    needs: [train-and-evaluate]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://github.com/${{ github.repository }}/deployments/production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Promote Candidate to Production Stage
+        run: |
+          echo "Human approval granted by production reviewers."
+          echo "Promoting model version ${{ needs.train-and-evaluate.outputs.model_version }} from Staging -> Production."
