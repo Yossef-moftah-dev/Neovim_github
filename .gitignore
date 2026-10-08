@@ -1,83 +1,37 @@
-# ---------- Python ----------
+# Data files
+*.csv
+
+# Python byte-code and caches
 __pycache__/
 *.py[cod]
-*.egg-info/
-.eggs/
-build/
-dist/
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-.coverage
-htmlcov/
-
-# ---------- Virtual environments ----------
-.venv/
-venv/
-env/
-
-# ---------- Secrets (never commit these) ----------
-.env
-.env.*
-!.env.example
-*.key
-*.pem
-kaggle.json
-hf_token*
-
-# ---------- Data ----------
-data/*
-!data/.gitkeep
-*.csv
-*.parquet
-*.arrow
-*.jsonl
-
-# ---------- Models & checkpoints ----------
-checkpoints/
-runs/
-outputs/
-models/
-*.pt
-*.pth
-*.bin
-*.safetensors
-*.ckpt
-*.onnx
-*.engine
-*.plan
-*.trt
-
-# ---------- Experiment tracking ----------
-mlruns/
-mlartifacts/
-wandb/
-lightning_logs/
-tensorboard/
-
-# ---------- BentoML ----------
-bentoml/bentos/
-*.bento
-
-# ---------- Notebooks ----------
+*$py.class
 .ipynb_checkpoints/
-# Optional: keep notebook outputs out of git (use `nbstripout` instead if you prefer)
 
-# ---------- IDEs ----------
-.vscode/
-.idea/
-*.swp
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+ENV/
 
-# ---------- OS ----------
+# OS-specific files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
 
-# ---------- Logs & temp ----------
-*.log
-tmp/
-temp/
+# Outputs
+outputs/
 
-# ---------- Keep these placeholders ----------
-!configs/*.yaml
-!docs/**/*.png
-!docs/**/*.md
+# uv
+.python-version
+
+# Test and coverage
+.coverage
+.pytest_cache/
+htmlcov/
+.ruff_cache/
