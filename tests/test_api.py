@@ -15,6 +15,13 @@ def test_health_endpoint_healthy(client: TestClient) -> None:
     assert "X-Request-ID" in response.headers
 
 
+def test_liveness_endpoint(client: TestClient) -> None:
+    response = client.get("/health/live")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "alive"
+
+
 def test_health_endpoint_unloaded(client: TestClient) -> None:
     # Simulate unready/unloaded model state
     client.app.state.predictor = None

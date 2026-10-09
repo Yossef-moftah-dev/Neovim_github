@@ -100,8 +100,10 @@ jobs:
         run: |
           docker run -d --name test-container -p 8000:8000 prodml-service:verification
           for i in {1..30}; do
-            if curl -s -f http://localhost:8000/health > /dev/null 2>&1; then
-              echo "✓ Pre-flight health check passed (HTTP 200 OK)."
+            if curl -s -f http://localhost:8000/health/live > /dev/null 2>&1; then
+              echo "✓ Pre-flight liveness check passed (HTTP 200 OK)."
+              curl -s -f http://localhost:8000/metadata > /dev/null 2>&1
+              echo "✓ Metadata endpoint verified."
               docker rm -f test-container
               exit 0
             fi
