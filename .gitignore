@@ -35,3 +35,7 @@ outputs/
 .pytest_cache/
 htmlcov/
 .ruff_cache/
+
+
+# ignore .agents directory
+.agents/
