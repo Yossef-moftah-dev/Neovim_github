@@ -20,7 +20,7 @@ By coupling real-time telemetry with rigorous statistical drift analysis and aut
 3. **Actionable Alertmanager Rules & On-Call Runbooks:** Configured 6 production alert rules with strict thresholds, explicit immediate on-call actions, and direct links to comprehensive triage runbooks (`docs/runbooks/*.md`). Deliberately fired and verified 3 live alert scenarios.
 4. **Statistical Drift Detection (5 Methods across 4 Typologies):** Implemented mathematical detectors for Chi-Square ($\chi^2$), Wasserstein Distance ($W_1$), Population Stability Index (PSI), Jensen-Shannon (JS) Divergence, and Maximum Mean Discrepancy (MMD). Authored `monitoring/simulate_drift.py` covering Sudden, Gradual, Incremental, and Periodic/Seasonal drift patterns in Arabic review distributions.
 5. **Evidently AI & PostgreSQL Metrics Store:** Orchestrated periodic Evidently batch evaluation pipelines, generating interactive HTML and structured JSON summaries while persisting historical drift scores into the `monitoring_drift_records` PostgreSQL table.
-6. **Closed Retraining Loop with 3-Tier Storm Protections:** Engineered `monitoring/retraining_trigger.py` featuring Dwell Time Cooldown, 24-hour Rate Limiting, and Data Quality/Volume sanity checks. Successfully verified the full automated chain: *Drift Injection $\to$ Statistical Breach $\to$ Alertmanager Fired $\to$ Storm Gates Evaluated $\to$ Airflow DAG $\to$ Model Quality Gate $\to$ MLflow Staging Registry*.
+6. **Closed Retraining Loop with 3-Tier Storm Protections:** Engineered `monitoring/retraining_trigger.py` featuring Dwell Time Cooldown, 24-hour Rate Limiting, and Data Quality/Volume sanity checks. Successfully verified the full automated chain: *Drift Injection → Statistical Breach → Alertmanager Fired → Storm Gates Evaluated → Airflow DAG → Model Quality Gate → MLflow Staging Registry*.
 
 ---
 
@@ -122,14 +122,21 @@ In enterprise Python ML serving architectures (such as Uvicorn running multiple 
 Production PromQL expressions powering dashboards and Alertmanager rules:
 
 ### 4.1 p95 Tail Latency SLA
-$$\text{Quantile}_{0.95} = \text{histogram\_quantile}\left(0.95, \sum \text{rate}(H_{\text{bucket}}[2m])\right)$$
+
+$$
+q_{0.95} = \operatorname{histogram\_quantile}\left(0.95, \sum \operatorname{rate}(H_{\text{bucket}}[2\text{m}])\right)
+$$
+
 ```promql
 histogram_quantile(0.95, sum(rate(prodml_http_request_duration_seconds_bucket{endpoint=~"/predict.*"}[2m])) by (le))
 ```
 *Evaluates whether the 95th percentile inference latency remains strictly under the 100ms operational budget.*
 
 ### 4.2 HTTP 5xx Error Ratio
-$$\text{Error Rate} = \frac{\sum \text{rate}(\text{HTTP}_{5xx}[2m])}{\sum \text{rate}(\text{HTTP}_{\text{total}}[2m])}$$
+
+$$
+\text{Error Rate} = \frac{\sum \operatorname{rate}(\text{HTTP}_{5\text{xx}}[2\text{m}])}{\sum \operatorname{rate}(\text{HTTP}_{\text{total}}[2\text{m}])}
+$$
 ```promql
 sum(rate(prodml_http_requests_total{status=~"5.."}[2m])) / clamp_min(sum(rate(prodml_http_requests_total[2m])), 0.001)
 ```
@@ -197,12 +204,12 @@ Alert rules are defined in `docker/prometheus/alert_rules.yml`. In accordance wi
 
 | Alert Name | Severity | Breach Condition | For | Immediate First Action | Runbook Link |
 | :--- | :---: | :--- | :---: | :--- | :--- |
-| `HighInferenceLatencyP95` | Critical | p95 latency $> 100\text{ ms}$ | 1m | Execute `serving/canary_promote.sh rollback` if canary is live; check CPU quota. | [`docs/runbooks/high_latency.md`](../docs/runbooks/high_latency.md) |
-| `HighHTTP5xxErrorRate` | Critical | 5xx error rate $> 2\%$ | 1m | Inspect `docker compose logs -n 100 prodml-service`; restart service if needed. | [`docs/runbooks/http_5xx_errors.md`](../docs/runbooks/http_5xx_errors.md) |
-| `CriticalPredictionDrift` | Warning | $\text{PSI} > 0.20$ or $W_1 > 0.25$ | 1m | Review `reports/evidently_drift_report.html`; inspect closed-loop retraining status. | [`docs/runbooks/prediction_drift.md`](../docs/runbooks/prediction_drift.md) |
+| `HighInferenceLatencyP95` | Critical | p95 latency > 100 ms | 1m | Execute `serving/canary_promote.sh rollback` if canary is live; check CPU quota. | [`docs/runbooks/high_latency.md`](../docs/runbooks/high_latency.md) |
+| `HighHTTP5xxErrorRate` | Critical | 5xx error rate > 2% | 1m | Inspect `docker compose logs -n 100 prodml-service`; restart service if needed. | [`docs/runbooks/http_5xx_errors.md`](../docs/runbooks/http_5xx_errors.md) |
+| `CriticalPredictionDrift` | Warning | PSI > 0.20 or W₁ > 0.25 | 1m | Review `reports/evidently_drift_report.html`; inspect closed-loop retraining status. | [`docs/runbooks/prediction_drift.md`](../docs/runbooks/prediction_drift.md) |
 | `ModelUnloadedOrServiceDegraded` | Critical | `prodml_model_loaded == 0` or target down | 30s | Trigger dynamic model reload via `POST /model/reload`; verify `/health` probe. | [`docs/runbooks/service_unloaded.md`](../docs/runbooks/service_unloaded.md) |
-| `LowPredictionConfidenceAnomaly` | Warning | Mean confidence $< 65\%$ | 2m | Sample review logs for Franco-Arabic, emoji saturation, or out-of-domain slang. | [`docs/runbooks/confidence_anomaly.md`](../docs/runbooks/confidence_anomaly.md) |
-| `BatchQueueSaturation` | Warning | 90th percentile batch size $\ge 60$ | 2m | Scale worker replica count or adjust `max_batch_size` in `serving/service.py`. | [`docs/runbooks/batch_saturation.md`](../docs/runbooks/batch_saturation.md) |
+| `LowPredictionConfidenceAnomaly` | Warning | Mean confidence < 65% | 2m | Sample review logs for Franco-Arabic, emoji saturation, or out-of-domain slang. | [`docs/runbooks/confidence_anomaly.md`](../docs/runbooks/confidence_anomaly.md) |
+| `BatchQueueSaturation` | Warning | 90th percentile batch size ≥ 60 | 2m | Scale worker replica count or adjust `max_batch_size` in `serving/service.py`. | [`docs/runbooks/batch_saturation.md`](../docs/runbooks/batch_saturation.md) |
 
 ### 6.2 Deliberate Alert Testing Verification
 
@@ -221,28 +228,46 @@ Authored in `monitoring/drift_detector.py`:
 
 #### 1. Chi-Square Test of Independence ($\chi^2$)
 For categorical discrete outcomes (sentiment labels: Negative, Neutral, Positive):
-$$\chi^2 = \sum_{i=1}^k \frac{(O_i - E_i)^2}{E_i}, \quad p = 1 - F_{\chi^2}(\chi^2, k - 1)$$
-*Detects prior probability shifts in class distribution ($p < 0.05$).*
+
+$$
+\chi^2 = \sum_{i=1}^k \frac{(O_i - E_i)^2}{E_i}, \quad p = 1 - F_{\chi^2}(\chi^2, k - 1)
+$$
+
+*Detects prior probability shifts in class distribution ($p \lt 0.05$).*
 
 #### 2. 1-Wasserstein Distance ($W_1$, Earth Mover's Distance)
 For continuous 1D features (prediction confidence, character lengths):
-$$W_1(u, v) = \int_{-\infty}^{\infty} |U(x) - V(x)| dx$$
+
+$$
+W_1(u, v) = \int_{-\infty}^{\infty} |U(x) - V(x)| \, \mathrm{d}x
+$$
+
 *Measures the minimum work required to transform the reference cumulative distribution into the target distribution ($W_1 > 0.25$).*
 
 #### 3. Population Stability Index (PSI)
 Binned risk metric comparing baseline reference $R_i$ against target batch $T_i$:
-$$\text{PSI} = \sum_{i=1}^k (T_i - R_i) \times \ln\left(\frac{T_i}{R_i}\right)$$
-- $\text{PSI} < 0.10$: Stable / No significant drift.
-- $0.10 \le \text{PSI} < 0.20$: Moderate shift / Monitoring recommended.
-- $\text{PSI} \ge 0.20$: Significant drift / Retraining trigger mandatory.
 
-#### 4. Jensen-Shannon Divergence ($\text{JSD}$)
+$$
+\mathrm{PSI} = \sum_{i=1}^k (T_i - R_i) \cdot \ln\left(\frac{T_i}{R_i}\right)
+$$
+
+- $\mathrm{PSI} \lt 0.10$: Stable / No significant drift.
+- $0.10 \le \mathrm{PSI} \lt 0.20$: Moderate shift / Monitoring recommended.
+- $\mathrm{PSI} \ge 0.20$: Significant drift / Retraining trigger mandatory.
+
+#### 4. Jensen-Shannon Divergence ($\mathrm{JSD}$)
 Symmetric, smoothed relative entropy bounded in $[0, 1]$:
-$$\text{JSD}(P \parallel Q) = \frac{1}{2} D_{\text{KL}}(P \parallel M) + \frac{1}{2} D_{\text{KL}}(Q \parallel M), \quad M = \frac{1}{2}(P + Q)$$
 
-#### 5. Maximum Mean Discrepancy ($\text{MMD}$)
+$$
+\mathrm{JSD}(P \parallel Q) = \frac{1}{2} D_{\mathrm{KL}}(P \parallel M) + \frac{1}{2} D_{\mathrm{KL}}(Q \parallel M), \quad M = \frac{1}{2}(P + Q)
+$$
+
+#### 5. Maximum Mean Discrepancy ($\mathrm{MMD}$)
 Kernel two-sample test in Reproducing Kernel Hilbert Space (RKHS) using Gaussian RBF kernel $k(x, y) = \exp(-\gamma \|x - y\|^2)$:
-$$\text{MMD}^2(X, Y) = \frac{1}{m^2}\sum_{i,j} k(x_i, x_j) - \frac{2}{mn}\sum_{i,j} k(x_i, y_j) + \frac{1}{n^2}\sum_{i,j} k(y_i, y_j)$$
+
+$$
+\mathrm{MMD}^2(X, Y) = \frac{1}{m^2}\sum_{i=1}^m \sum_{j=1}^m k(x_i, x_j) - \frac{2}{mn}\sum_{i=1}^m \sum_{j=1}^n k(x_i, y_j) + \frac{1}{n^2}\sum_{i=1}^n \sum_{j=1}^n k(y_i, y_j)
+$$
 
 ### 7.2 The 4 Production Drift Typologies
 
@@ -265,9 +290,9 @@ Implemented in `monitoring/simulate_drift.py`:
 ```
 
 1. **Sudden Drift (Abrupt Shift):** Abrupt step change at $t_0$, simulating viral boycott events or slang shock where negative reviews jump from 15% to 85% of traffic.
-2. **Gradual Drift:** Continuous sigmoidal transition $P(\text{drift} \mid t) = \frac{1}{1 + e^{-k(t - t_{\text{mid}})}}$, simulating smooth language evolution across seasons.
-3. **Incremental Drift:** Discrete multi-stage degradation across 4 distinct phases (10% $\to$ 30% $\to$ 60% $\to$ 90%).
-4. **Periodic / Seasonal Drift:** Sinusoidal oscillation $P(t) = 0.5 + 0.45\sin(2\pi t / T)$, simulating holiday/Ramadan shopping surges with high positive sentiment and promotional language.
+2. **Gradual Drift:** Continuous sigmoidal transition $P(\mathrm{drift} \mid t) = \frac{1}{1 + e^{-k(t - t_{\mathrm{mid}})}}$, simulating smooth language evolution across seasons.
+3. **Incremental Drift:** Discrete multi-stage degradation across 4 distinct phases (10% → 30% → 60% → 90%).
+4. **Periodic / Seasonal Drift:** Sinusoidal oscillation $P(t) = 0.5 + 0.45 \sin(2\pi t / T)$, simulating holiday/Ramadan shopping surges with high positive sentiment and promotional language.
 
 ---
 
@@ -365,9 +390,9 @@ Per project requirements, tooling was applied strictly based on relevance to **T
 - [x] Service exposes valid Prometheus metrics at `GET /metrics`.
 - [x] Multiprocess mode trap handled cleanly via `PROMETHEUS_MULTIPROC_DIR`.
 - [x] Grafana dashboard provisions automatically with zero-click recovery.
-- [x] Alertmanager configured with $\ge 6$ actionable rules, runbooks, and deliberate test triggers.
+- [x] Alertmanager configured with ≥ 6 actionable rules, runbooks, and deliberate test triggers.
 - [x] Statistical drift detection implemented across all 5 algorithms and 4 typologies.
 - [x] Evidently AI and PostgreSQL persistence operational.
 - [x] Closed retraining loop with storm protections verified end-to-end.
-- [x] Full test suite passes with code coverage $\ge 70\%$.
+- [x] Full test suite passes with code coverage ≥ 70%.
 - [x] Report authored and committed to branch `module-4-observability`.
