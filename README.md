@@ -1,13 +1,13 @@
 # ProdML — Arabic Sentiment Analysis & MLOps Platform
 
 [![CI](https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/actions/workflows/ci.yml/badge.svg)](https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/badge/Release-v0.2.0-blue.svg)](pyproject.toml)
-[![Tests](https://img.shields.io/badge/Tests-38%20Passed-brightgreen.svg)](tests/)
-[![Coverage](https://img.shields.io/badge/Coverage-73%25-brightgreen.svg)](tests/)
+[![Release](https://img.shields.io/badge/Release-v0.3.0-blue.svg)](pyproject.toml)
+[![Tests](https://img.shields.io/badge/Tests-51%20Passed-brightgreen.svg)](tests/)
+[![Coverage](https://img.shields.io/badge/Coverage-74%25-brightgreen.svg)](tests/)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Production-grade Arabic sentiment classification service and end-to-end MLOps platform powered by AraBERT. Features an enterprise tracking topology (PostgreSQL 16, MinIO S3, MLflow), reproducible DVC data pipelines, automated CI/CD quality gates, zero-downtime model registry hot-reloading, and containerized deployment.
+Production-grade Arabic sentiment classification service and end-to-end MLOps platform powered by AraBERT. Features Apache Airflow 2.9+ pipeline orchestration, high-throughput BentoML dynamic micro-batching, NVIDIA Triton & ONNX Runtime accelerated serving, Nginx canary routing with automated sub-second rollback, reproducible DVC pipelines, and full MLflow experiment governance.
 
 ---
 
@@ -17,7 +17,7 @@ Production-grade Arabic sentiment classification service and end-to-end MLOps pl
 # 1. Clone repository
 git clone https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert.git && cd arabic-sentiment-arabert
 
-# 2. Launch full tracking and serving stack
+# 2. Launch full platform stack (Airflow, BentoML, MLflow, Postgres, MinIO)
 docker compose up -d --build
 
 # 3. Test real-time inference
@@ -30,33 +30,16 @@ curl -X POST http://localhost:8000/predict \
 
 ## 🌐 Platform Architecture & Services
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Client Applications                      │
-│      (FastAPI Serving / DVC Pipeline / Experiment Tracking)     │
-└──────────────┬──────────────────────────────────┬───────────────┘
-               │ HTTP (:5000)                     │ S3 API (:9000)
-               ▼                                  ▼
-┌──────────────────────────────┐    ┌────────────────────────────┐
-│    MLflow Tracking Server    │    │        MinIO Object        │
-│    (prodml-mlflow-server)    │    │           Storage          │
-│                              │    │       (prodml-minio)       │
-└──────────────┬───────────────┘    └─────────────┬──────────────┘
-               │ SQL (:5432)                      │ S3 Buckets:
-               ▼                                  │  • s3://mlflow/
-┌──────────────────────────────┐                  │  • s3://dvc-storage/
-│        PostgreSQL 16         │                  │
-│      (prodml-postgres)       │◄─────────────────┘
-└──────────────────────────────┘
-```
-
 | Service | Port / URL | Credentials | Purpose |
 | :--- | :--- | :--- | :--- |
-| **FastAPI Inference** | [`http://localhost:8000`](http://localhost:8000) | — | Real-time sentiment prediction and Swagger UI at `/docs` |
+| **BentoML / FastAPI** | [`http://localhost:8000`](http://localhost:8000) | — | Production serving with dynamic micro-batching (`max_batch=64`) |
+| **Canary Reverse Proxy** | [`http://localhost:80`](http://localhost:80) | — | Nginx weighted traffic splitting (95% Prod / 5% Canary) |
+| **Apache Airflow UI** | [`http://localhost:8080`](http://localhost:8080) | `admin` / `admin` | DAG orchestration, automated training & quality gate branching |
 | **MLflow Tracking** | [`http://localhost:5000`](http://localhost:5000) | — | Experiment tracking, metric curves, and Model Registry |
 | **MinIO Console** | [`http://localhost:9001`](http://localhost:9001) | `minioadmin` / `minioadmin` | Object storage browser and administrative management |
 | **MinIO S3 API** | `http://localhost:9000` | `minioadmin` / `minioadmin` | S3-compatible remote storage for DVC and MLflow artifacts |
-| **PostgreSQL 16** | `localhost:5432` | `mlflow` / `mlflow_password` | Relational backend store for experiment metadata |
+| **PostgreSQL 16** | `localhost:5432` | `mlflow` / `mlflow_password` | Backend store for MLflow (`mlflow`) & Airflow (`airflow`) |
+
 
 ---
 
