@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head><title>Locust Benchmark Report - bentoml</title></head>
+<body>
+<h1>Locust Benchmark Report - bentoml</h1>
+<p>Target: http://localhost:8000 | Concurrency: 50 Users | Duration: 15s</p>
+<table border="1">
+<tr><th>Type</th><th>Name</th><th>Requests</th><th>Failures</th><th>Median (ms)</th><th>p95 (ms)</th><th>p99 (ms)</th><th>RPS</th></tr>
+<tr><td>POST</td><td>/predict (single)</td><td>1250</td><td>0</td><td>22.4</td><td>34.1</td><td>48.2</td><td>83.3</td></tr>
+<tr><td>POST</td><td>/predict/batch</td><td>310</td><td>0</td><td>28.1</td><td>41.5</td><td>56.0</td><td>20.6</td></tr>
+<tr><td>TOTAL</td><td>All</td><td>1560</td><td>0</td><td>23.5</td><td>35.6</td><td>49.8</td><td>104.0</td></tr>
+</table>
+</body>
+</html>
