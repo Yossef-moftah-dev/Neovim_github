@@ -108,6 +108,7 @@ fi
 echo "========================================================================"
 echo "Starting ProdML Docker Compose stack in $APP_DIR..."
 echo "========================================================================"
+sudo -u "$TARGET_USER" docker compose -f "$APP_DIR/docker-compose.yml" pull prodml-service 2>/dev/null || true
 sudo -u "$TARGET_USER" docker compose -f "$APP_DIR/docker-compose.yml" up -d --build
 
 echo "Waiting for services to become healthy..."

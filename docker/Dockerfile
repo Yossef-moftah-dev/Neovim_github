@@ -46,6 +46,13 @@ ENV DEBIAN_FRONTEND=noninteractive \
     HOST=0.0.0.0 \
     MODEL_DIR="/app/outputs/final_model"
 
+LABEL org.opencontainers.image.title="ProdML Arabic Sentiment Service" \
+      org.opencontainers.image.description="Production Arabic sentiment analysis service powered by AraBERT with full observability and monitoring" \
+      org.opencontainers.image.url="https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert" \
+      org.opencontainers.image.source="https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert" \
+      org.opencontainers.image.vendor="ProdML" \
+      org.opencontainers.image.licenses="MIT"
+
 # Install curl for Docker healthcheck and clean apt caches
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \

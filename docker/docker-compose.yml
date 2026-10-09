@@ -131,7 +131,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    image: prodml-service:latest
+    image: ${PRODML_IMAGE:-ghcr.io/yossef-moftah-dev/arabic-sentiment-arabert:latest}
     container_name: prodml-service
     ports:
       - "8000:8000"
