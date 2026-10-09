@@ -26,6 +26,7 @@ dependencies = [
     "prometheus-client>=0.20.0",
     "evidently>=0.7.0",
     "psycopg2-binary>=2.9.0",
+    "sentencepiece>=0.2.0",
 ]
 
 [project.scripts]

@@ -136,6 +136,15 @@ class SentimentPredictor:
         if not target_dir.exists():
             raise FileNotFoundError(f"Model directory does not exist: {target_dir}")
 
+        if (
+            not (target_dir / "config.json").exists()
+            and not (target_dir / "model.safetensors").exists()
+            and not (target_dir / "pytorch_model.bin").exists()
+        ):
+            raise FileNotFoundError(
+                f"Model artifacts not found in {target_dir} (missing config.json or weights files)"
+            )
+
         logger.info("Loading model weights and tokenizer from %s", target_dir)
         tokenizer = AutoTokenizer.from_pretrained(target_dir)
         model = AutoModelForSequenceClassification.from_pretrained(target_dir)

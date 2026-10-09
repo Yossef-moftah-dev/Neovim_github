@@ -200,6 +200,16 @@ def create_app() -> FastAPI:
         return Response(content=data, media_type=content_type)
 
     @application.get(
+        "/health/live",
+        summary="Service Liveness Probe",
+        tags=["Health"],
+        include_in_schema=True,
+    )
+    def liveness_check() -> dict[str, str]:
+        """Liveness probe indicating Uvicorn and FastAPI application is running."""
+        return {"status": "alive"}
+
+    @application.get(
         "/health",
         response_model=HealthResponse,
         summary="Service Health Check",

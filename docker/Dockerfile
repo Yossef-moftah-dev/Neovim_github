@@ -74,9 +74,9 @@ COPY --chown=appuser:appgroup pyproject.toml README.md ./
 # Create artifact directory with proper permissions for mounted volumes
 RUN mkdir -p /app/outputs/final_model && chown -R appuser:appgroup /app
 
-# Configure Docker Healthcheck
+# Configure Docker Healthcheck (liveness probe)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8000/health/live || exit 1
 
 # Enforce non-root execution
 USER appuser
