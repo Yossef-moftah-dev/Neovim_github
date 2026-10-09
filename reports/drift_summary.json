@@ -1,0 +1,103 @@
+{
+  "timestamp": "2026-10-09T03:03:39.735780+00:00",
+  "reference_rows": 1932,
+  "current_rows": 180,
+  "overall_drift_detected": true,
+  "evaluations": [
+    {
+      "method": "chi_square",
+      "feature_name": "label",
+      "statistic": 426.788321,
+      "threshold": 0.05,
+      "p_value": 0.0,
+      "drift_detected": true,
+      "details": {
+        "degrees_of_freedom": 2,
+        "alpha": 0.05
+      }
+    },
+    {
+      "method": "jensen_shannon",
+      "feature_name": "label",
+      "statistic": 0.385777,
+      "threshold": 0.2,
+      "p_value": null,
+      "drift_detected": true,
+      "details": {
+        "js_distance": 0.6211097348527586
+      }
+    },
+    {
+      "method": "wasserstein",
+      "feature_name": "char_length",
+      "statistic": 34.235921,
+      "threshold": 0.25,
+      "p_value": null,
+      "drift_detected": true,
+      "details": {
+        "ref_count": 1932,
+        "cur_count": 180
+      }
+    },
+    {
+      "method": "psi",
+      "feature_name": "char_length",
+      "statistic": 6.984213,
+      "threshold": 0.2,
+      "p_value": null,
+      "drift_detected": true,
+      "details": {
+        "status": "significant_drift",
+        "bins_used": 10
+      }
+    },
+    {
+      "method": "wasserstein",
+      "feature_name": "word_count",
+      "statistic": 6.279262,
+      "threshold": 0.25,
+      "p_value": null,
+      "drift_detected": true,
+      "details": {
+        "ref_count": 1932,
+        "cur_count": 180
+      }
+    },
+    {
+      "method": "psi",
+      "feature_name": "word_count",
+      "statistic": 4.949647,
+      "threshold": 0.2,
+      "p_value": null,
+      "drift_detected": true,
+      "details": {
+        "status": "significant_drift",
+        "bins_used": 10
+      }
+    },
+    {
+      "method": "wasserstein",
+      "feature_name": "arabic_ratio",
+      "statistic": 0.053083,
+      "threshold": 0.25,
+      "p_value": null,
+      "drift_detected": false,
+      "details": {
+        "ref_count": 1932,
+        "cur_count": 180
+      }
+    },
+    {
+      "method": "psi",
+      "feature_name": "arabic_ratio",
+      "statistic": 3.480236,
+      "threshold": 0.2,
+      "p_value": null,
+      "drift_detected": true,
+      "details": {
+        "status": "significant_drift",
+        "bins_used": 10
+      }
+    }
+  ]
+}

@@ -1,0 +1,297 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": false,
+        "name": "Deployments & Releases",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Row 1: Health & Ingress Overview",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "fillOpacity": 80 }, "unit": "reqps" } },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "expr": "sum(rate(prodml_http_requests_total[1m]))",
+          "legendFormat": "Total Throughput (RPS)",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Request Rate (RPS)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps" } },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 1 },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "sum(rate(prodml_http_requests_total{status=~\"2..\"}[1m]))",
+          "legendFormat": "2xx Success",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(prodml_http_requests_total{status=~\"4..\"}[1m]))",
+          "legendFormat": "4xx Client Errors",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(prodml_http_requests_total{status=~\"5..\"}[1m]))",
+          "legendFormat": "5xx Server Errors",
+          "refId": "C"
+        }
+      ],
+      "title": "HTTP Status Breakdown",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "HEALTHY" } }, "type": "value" }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        {
+          "expr": "prodml_model_loaded",
+          "legendFormat": "Model Residency",
+          "refId": "A"
+        }
+      ],
+      "title": "Service & Model Health",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "unit": "none" } },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        {
+          "expr": "sum(prodml_predictions_total)",
+          "legendFormat": "Lifetime Inferences",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Predictions Processed",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "id": 200,
+      "title": "Row 2: Stage & Inference Latency SLAs",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "s" } },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 8 },
+      "id": 5,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(prodml_http_request_duration_seconds_bucket{endpoint=~\"/predict.*\"}[2m])) by (le))",
+          "legendFormat": "p50 Median Latency",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(prodml_http_request_duration_seconds_bucket{endpoint=~\"/predict.*\"}[2m])) by (le))",
+          "legendFormat": "p95 Tail Latency",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(prodml_http_request_duration_seconds_bucket{endpoint=~\"/predict.*\"}[2m])) by (le))",
+          "legendFormat": "p99 Extreme Latency",
+          "refId": "C"
+        }
+      ],
+      "title": "End-to-End Prediction Latency (p50 / p95 / p99)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "none" } },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 8 },
+      "id": 6,
+      "targets": [
+        {
+          "expr": "sum(rate(prodml_batch_size_bucket[2m])) by (le)",
+          "legendFormat": "Batch <= {{le}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Dynamic Micro-Batch Size Distribution",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
+      "id": 300,
+      "title": "Row 3: Data Quality & Statistical Drift Telemetry",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.1 },
+              { "color": "red", "value": 0.2 }
+            ]
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 16 },
+      "id": 7,
+      "targets": [
+        {
+          "expr": "prodml_drift_score{metric=\"psi\"}",
+          "legendFormat": "PSI ({{feature}})",
+          "refId": "A"
+        }
+      ],
+      "title": "Population Stability Index (PSI)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "none" } },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 16 },
+      "id": 8,
+      "targets": [
+        {
+          "expr": "prodml_drift_score{metric=\"wasserstein\"}",
+          "legendFormat": "Wasserstein ({{feature}})",
+          "refId": "A"
+        }
+      ],
+      "title": "Wasserstein Distance (EMD)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "percentunit" } },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 16 },
+      "id": 9,
+      "targets": [
+        {
+          "expr": "sum(rate(prodml_predictions_total[5m])) by (predicted_label) / ignoring(predicted_label) group_left sum(rate(prodml_predictions_total[5m]))",
+          "legendFormat": "{{predicted_label}} Proportion",
+          "refId": "A"
+        }
+      ],
+      "title": "Predicted Sentiment Class Distribution Shifts",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 400,
+      "title": "Row 4: System Resources & Container Footprint",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "percentunit" } },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 24 },
+      "id": 10,
+      "targets": [
+        {
+          "expr": "rate(process_cpu_seconds_total{job=\"prodml-service\"}[1m])",
+          "legendFormat": "CPU Utilization",
+          "refId": "A"
+        }
+      ],
+      "title": "Process CPU Utilization",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "bytes" } },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 24 },
+      "id": 11,
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes{job=\"prodml-service\"}",
+          "legendFormat": "Resident Memory (RSS)",
+          "refId": "A"
+        }
+      ],
+      "title": "Memory Footprint (RSS)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["prodml", "observability", "drift", "mlops"],
+  "templating": {
+    "list": [
+      {
+        "current": { "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "definition": "label_values(prodml_predictions_total, model_version)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Model Version",
+        "multi": true,
+        "name": "model_version",
+        "query": { "query": "label_values(prodml_predictions_total, model_version)", "refId": "StandardVariableQuery" },
+        "type": "query"
+      },
+      {
+        "current": { "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "definition": "label_values(up, instance)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Instance",
+        "multi": true,
+        "name": "instance",
+        "query": { "query": "label_values(up, instance)", "refId": "StandardVariableQuery" },
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"] },
+  "timezone": "browser",
+  "title": "ProdML — Production Observability & Drift Monitoring",
+  "uid": "prodml-observability-v1",
+  "version": 1
+}

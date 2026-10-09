@@ -29,7 +29,7 @@ def test_metadata_endpoint(client: TestClient) -> None:
     response = client.get("/metadata")
     assert response.status_code == 200
     data = response.json()
-    assert data["version"] == "0.3.0"
+    assert data["version"] == "0.4.0"
     assert data["framework"] == "PyTorch / HuggingFace Transformers"
     assert data["num_classes"] == 3
     assert data["classes"] == ["Negative", "Neutral", "Positive"]
@@ -82,3 +82,14 @@ def test_correlation_id_passthrough(client: TestClient) -> None:
     response = client.get("/health", headers={"X-Request-ID": custom_id})
     assert response.status_code == 200
     assert response.headers["X-Request-ID"] == custom_id
+
+
+def test_metrics_endpoint(client: TestClient) -> None:
+    # Trigger a predict request to ensure metrics get populated
+    client.post("/predict", json={"text": "المنتج رائع جدا"})
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    text = response.text
+    assert "prodml_http_requests_total" in text
+    assert "prodml_http_request_duration_seconds" in text
+    assert "prodml_predictions_total" in text

@@ -1,0 +1,49 @@
+{
+  "closed_loop_demonstration": "ProdML Arabic Sentiment",
+  "executed_at": "2026-10-09T03:04:56.478368+00:00",
+  "final_status": "SUCCESS",
+  "events": [
+    {
+      "step": 1,
+      "name": "Baseline Reference Verification",
+      "status": "PASSED",
+      "timestamp": "2026-10-09T03:03:39.665928+00:00",
+      "details": "Verified baseline dataset at data/processed/train.csv with 1932 samples and class balance."
+    },
+    {
+      "step": 2,
+      "name": "Drift Injection (Typology 1: Sudden Shift)",
+      "status": "COMPLETED",
+      "timestamp": "2026-10-09T03:03:39.688942+00:00",
+      "details": "Synthesized 180 reviews with abrupt negative polarity inversion and dialect slang."
+    },
+    {
+      "step": 3,
+      "name": "Evidently TestSuite & Statistical Evaluation",
+      "status": "FAILED_QUALITY_GATE",
+      "timestamp": "2026-10-09T03:03:43.322592+00:00",
+      "details": "Evaluations complete. Overall drift detected: True. Report saved to reports/evidently_drift_report.html."
+    },
+    {
+      "step": 4,
+      "name": "Alertmanager Notification Trigger",
+      "status": "ALERT_DISPATCHED",
+      "timestamp": "2026-10-09T03:03:43.322849+00:00",
+      "details": "Fired CriticalPredictionDrift (severity: warning) with immediate action: 'Trigger closed-loop retraining'."
+    },
+    {
+      "step": 5,
+      "name": "Retraining Storm Protection Gates",
+      "status": "PASSED",
+      "timestamp": "2026-10-09T03:03:43.323971+00:00",
+      "details": "Gate verification outcome: BYPASSED_FORCE (Dwell time, rate limiting, and sample volume passed)."
+    },
+    {
+      "step": 6,
+      "name": "Retraining Pipeline & Model Quality Gate",
+      "status": "PROMOTED_TO_STAGING",
+      "timestamp": "2026-10-09T03:04:56.478069+00:00",
+      "details": "Pipeline executed: Extract -> Validate -> Train -> Evaluate -> Quality Gate -> MLflow Model Registry Staging."
+    }
+  ]
+}

@@ -12,6 +12,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from prodml.logging import reset_correlation_id, set_correlation_id
+from prodml.metrics import HTTP_REQUEST_DURATION_SECONDS, HTTP_REQUESTS_TOTAL
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +47,25 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
 
         try:
             response: Response = await call_next(request)
-            duration_ms = (time.perf_counter() - start_time) * 1000.0
+            duration_sec = time.perf_counter() - start_time
+            duration_ms = duration_sec * 1000.0
 
             # Attach correlation ID to response headers
             response.headers[REQUEST_ID_HEADER] = correlation_id
+
+            # Telemetry metrics collection
+            try:
+                HTTP_REQUESTS_TOTAL.labels(
+                    method=request.method,
+                    endpoint=request.url.path,
+                    status=str(response.status_code),
+                ).inc()
+                HTTP_REQUEST_DURATION_SECONDS.labels(
+                    method=request.method,
+                    endpoint=request.url.path,
+                ).observe(duration_sec)
+            except Exception:  # noqa: BLE001, S110
+                pass
 
             logger.info(
                 "Completed request: %s %s - status %d in %.2f ms",
@@ -66,7 +82,22 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
             )
             return response
         except Exception:
-            duration_ms = (time.perf_counter() - start_time) * 1000.0
+            duration_sec = time.perf_counter() - start_time
+            duration_ms = duration_sec * 1000.0
+
+            try:
+                HTTP_REQUESTS_TOTAL.labels(
+                    method=request.method,
+                    endpoint=request.url.path,
+                    status="500",
+                ).inc()
+                HTTP_REQUEST_DURATION_SECONDS.labels(
+                    method=request.method,
+                    endpoint=request.url.path,
+                ).observe(duration_sec)
+            except Exception:  # noqa: BLE001, S110
+                pass
+
             logger.exception(
                 "Unhandled exception during %s %s in %.2f ms",
                 request.method,
@@ -75,6 +106,7 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
                 extra={
                     "http_method": request.method,
                     "http_path": request.url.path,
+                    "status_code": 500,
                     "latency_ms": duration_ms,
                 },
             )
