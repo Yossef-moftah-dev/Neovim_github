@@ -7,13 +7,21 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
 from prodml import __version__
 from prodml.config import get_settings
 from prodml.logging import configure_logging
+from prodml.metrics import (
+    BATCH_SIZE_DISTRIBUTION,
+    MODEL_LOADED,
+    get_latest_metrics,
+    record_batch_prediction_metrics,
+    record_prediction_metrics,
+    setup_multiproc_dir,
+)
 from prodml.middleware import CorrelationIdMiddleware
 from prodml.predict import PredictionResult, SentimentPredictor
 from prodml.train import calculate_artifact_hash
@@ -116,10 +124,14 @@ class ReloadResponse(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifespan by loading model into memory once at startup."""
+    setup_multiproc_dir()
     settings = get_settings()
     configure_logging(settings.service.log_level)
     if getattr(app.state, "predictor", None) is not None:
         logger.info("Predictor already initialized in application state.")
+        MODEL_LOADED.labels(
+            model_version=str(getattr(app.state, "model_version", "v1") or "v1")
+        ).set(1.0)
         yield
         return
 
@@ -135,6 +147,7 @@ async def lifespan(app: FastAPI):
         app.state.model_version = getattr(predictor, "model_version", None)
         app.state.model_stage = getattr(predictor, "model_stage", None)
         app.state.artifact_hash = calculate_artifact_hash(settings.model.model_dir)
+        MODEL_LOADED.labels(model_version=str(app.state.model_version or "v1")).set(1.0)
         logger.info(
             "Model successfully resident in memory from %s (v: %s, stage: %s). Artifact hash: %s",
             app.state.model_uri,
@@ -149,11 +162,15 @@ async def lifespan(app: FastAPI):
         )
         app.state.predictor = None
         app.state.artifact_hash = "not_loaded"
+        MODEL_LOADED.labels(model_version="v1").set(0.0)
 
     yield
 
     logger.info("Cleaning up application resources during shutdown...")
     app.state.predictor = None
+    MODEL_LOADED.labels(model_version=str(getattr(app.state, "model_version", "v1") or "v1")).set(
+        0.0
+    )
 
 
 # ---------------------------------------------------------
@@ -172,6 +189,15 @@ def create_app() -> FastAPI:
 
     # Attach observability middleware
     application.add_middleware(CorrelationIdMiddleware)
+
+    @application.get(
+        "/metrics",
+        summary="Prometheus Metrics Exposition",
+        include_in_schema=False,
+    )
+    def metrics() -> Response:
+        data, content_type = get_latest_metrics()
+        return Response(content=data, media_type=content_type)
 
     @application.get(
         "/health",
@@ -254,6 +280,7 @@ def create_app() -> FastAPI:
             request.app.state.artifact_hash = calculate_artifact_hash(
                 getattr(new_predictor.config, "model_dir", cfg.model.model_dir)
             )
+            MODEL_LOADED.labels(model_version=str(request.app.state.model_version or "v1")).set(1.0)
             return ReloadResponse(
                 status="reloaded",
                 model_uri=request.app.state.model_uri,
@@ -286,6 +313,12 @@ def create_app() -> FastAPI:
             )
 
         result: PredictionResult = predictor.predict_one(req.text)
+
+        # Telemetry observation
+        version_str = str(getattr(request.app.state, "model_version", "v1") or "v1")
+        record_prediction_metrics(result.label, result.confidence, version_str)
+        BATCH_SIZE_DISTRIBUTION.observe(1.0)
+
         return PredictionResponse(
             label=result.label,
             confidence=result.confidence,
@@ -313,6 +346,10 @@ def create_app() -> FastAPI:
 
         results: list[PredictionResult] = predictor.predict_batch(req.texts)
         duration_ms = getattr(predictor.predict_batch, "last_duration_ms", None)
+
+        # Telemetry observation
+        version_str = str(getattr(request.app.state, "model_version", "v1") or "v1")
+        record_batch_prediction_metrics([r.model_dump() for r in results], version_str)
 
         return [
             PredictionResponse(

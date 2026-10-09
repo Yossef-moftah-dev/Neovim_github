@@ -1,13 +1,13 @@
 # ProdML — Arabic Sentiment Analysis & MLOps Platform
 
 [![CI](https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/actions/workflows/ci.yml/badge.svg)](https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/badge/Release-v0.3.0-blue.svg)](pyproject.toml)
+[![Release](https://img.shields.io/badge/Release-v0.4.0-blue.svg)](pyproject.toml)
 [![Tests](https://img.shields.io/badge/Tests-51%20Passed-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/Coverage-74%25-brightgreen.svg)](tests/)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Production-grade Arabic sentiment classification service and end-to-end MLOps platform powered by AraBERT. Features Apache Airflow 2.9+ pipeline orchestration, high-throughput BentoML dynamic micro-batching, NVIDIA Triton & ONNX Runtime accelerated serving, Nginx canary routing with automated sub-second rollback, reproducible DVC pipelines, and full MLflow experiment governance.
+Production-grade Arabic sentiment classification service and end-to-end MLOps platform powered by AraBERT. Features Apache Airflow 2.9+ pipeline orchestration, high-throughput BentoML dynamic micro-batching, NVIDIA Triton & ONNX Runtime accelerated serving, Nginx canary routing with automated sub-second rollback, reproducible DVC pipelines, full MLflow experiment governance, and complete production observability (Prometheus, Grafana as code, Alertmanager, Evidently drift monitoring, and closed-loop retraining).
 
 ---
 
@@ -17,7 +17,7 @@ Production-grade Arabic sentiment classification service and end-to-end MLOps pl
 # 1. Clone repository
 git clone https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert.git && cd arabic-sentiment-arabert
 
-# 2. Launch full platform stack (Airflow, BentoML, MLflow, Postgres, MinIO)
+# 2. Launch full platform stack (Airflow, BentoML, MLflow, Postgres, MinIO, Prometheus, Grafana, Alertmanager)
 docker compose up -d --build
 
 # 3. Test real-time inference
@@ -33,12 +33,15 @@ curl -X POST http://localhost:8000/predict \
 | Service | Port / URL | Credentials | Purpose |
 | :--- | :--- | :--- | :--- |
 | **BentoML / FastAPI** | [`http://localhost:8000`](http://localhost:8000) | — | Production serving with dynamic micro-batching (`max_batch=64`) |
+| **Grafana Observability** | [`http://localhost:3000`](http://localhost:3000) | `admin` / `admin` | Dashboards as code (Health/Ingress, Stage Latency, Data/Drift, System) |
+| **Prometheus Telemetry** | [`http://localhost:9090`](http://localhost:9090) | — | TSDB scraping `/metrics`, SLA evaluation, and quantile histograms |
+| **Alertmanager Routing** | [`http://localhost:9093`](http://localhost:9093) | — | Alert routing, grouping, and immediate on-call action runbooks |
 | **Canary Reverse Proxy** | [`http://localhost:80`](http://localhost:80) | — | Nginx weighted traffic splitting (95% Prod / 5% Canary) |
 | **Apache Airflow UI** | [`http://localhost:8080`](http://localhost:8080) | `admin` / `admin` | DAG orchestration, automated training & quality gate branching |
 | **MLflow Tracking** | [`http://localhost:5000`](http://localhost:5000) | — | Experiment tracking, metric curves, and Model Registry |
 | **MinIO Console** | [`http://localhost:9001`](http://localhost:9001) | `minioadmin` / `minioadmin` | Object storage browser and administrative management |
 | **MinIO S3 API** | `http://localhost:9000` | `minioadmin` / `minioadmin` | S3-compatible remote storage for DVC and MLflow artifacts |
-| **PostgreSQL 16** | `localhost:5432` | `mlflow` / `mlflow_password` | Backend store for MLflow (`mlflow`) & Airflow (`airflow`) |
+| **PostgreSQL 16** | `localhost:5432` | `mlflow` / `mlflow_password` | Backend store for MLflow (`mlflow`), Airflow (`airflow`), & Drift (`monitoring_drift_records`) |
 
 
 ---
@@ -171,6 +174,41 @@ uv run python scripts/model_quality_gate.py --simulate-regression
 
 ---
 
+---
+
+## 📊 Production Observability & Closed Retraining Loop
+
+The platform features an end-to-end production monitoring and closed-loop retraining architecture:
+
+### 1. Real-Time Telemetry & Prometheus Metrics
+- **Metrics Exposition:** Exposes live request rates, p50/p95/p99 latency quantiles, sentiment class distributions, prediction confidences, and micro-batch distributions at `GET /metrics`.
+- **Multiprocess Concurrency Trap:** Handled via `PROMETHEUS_MULTIPROC_DIR` and `MultiProcessCollector` across Uvicorn/BentoML worker processes.
+
+### 2. Grafana Dashboard as Code (Zero-Click Recovery)
+- Declarative 4-row dashboard at `http://localhost:3000` (`admin`/`admin`):
+  1. **Row 1: Health & Ingress** (Throughput, 2xx/4xx/5xx status rates, model residency status)
+  2. **Row 2: Stage Latency** (p50, p95, p99 latency heatmaps and time-series)
+  3. **Row 3: Data & Drift Telemetry** (PSI scores, Wasserstein distance, sentiment class shares)
+  4. **Row 4: System Resources** (CPU utilization, resident memory RSS)
+
+### 3. Statistical Drift Simulation & Detection
+- **4 Drift Typologies (`monitoring/simulate_drift.py`):** Sudden, Gradual, Incremental, and Periodic/Seasonal drift.
+- **5 Detection Algorithms (`monitoring/drift_detector.py`):** Chi-Square ($\chi^2$), Wasserstein Distance ($W_1$), Population Stability Index (PSI), Jensen-Shannon (JS) Divergence, and Maximum Mean Discrepancy (MMD).
+- **Evidently AI & PostgreSQL Store (`monitoring/evidently_monitor.py`):** Generates interactive HTML reports (`reports/evidently_drift_report.html`) and persists structured drift records to PostgreSQL table `monitoring_drift_records`.
+
+### 4. Closed Retraining Loop & Storm Protections
+- **Defensive Storm Gates (`monitoring/retraining_trigger.py`):** Enforces Dwell Time Cooldown, 24-hour Rate Limiting, and Sample Volume/Quality sanity checks.
+- **End-to-End Automated Demonstration:**
+  ```bash
+  # Execute full automated closed retraining loop
+  uv run python scripts/demonstrate_closed_loop.py
+
+  # Deliberately fire and verify 3 production alert scenarios
+  uv run python scripts/test_alerts.py
+  ```
+
+---
+
 ## 🧪 Testing & Code Quality
 
 ```bash
@@ -178,14 +216,14 @@ uv run python scripts/model_quality_gate.py --simulate-regression
 uv sync --all-extras --dev
 
 # Run full test suite with coverage
-uv run pytest --cov=src/prodml --cov-report=term-missing --cov-fail-under=70
+uv run pytest --cov=src/prodml --cov=monitoring --cov-report=term-missing --cov-fail-under=70
 
 # ONNX vs PyTorch logit parity check (< 1e-4 tolerance)
 uv run pytest tests/test_logit_parity.py -v
 
 # Code linting & formatting checks
-uv run ruff check src/ tests/ scripts/
-uv run ruff format --check src/ tests/ scripts/
+uv run ruff check src/ tests/ scripts/ monitoring/
+uv run ruff format --check src/ tests/ scripts/ monitoring/
 ```
 
 ---
@@ -194,4 +232,7 @@ uv run ruff format --check src/ tests/ scripts/
 
 - **Module 1 Report:** [`reports/module-1.md`](reports/module-1.md) (Foundation, Packaging & Service)
 - **Module 2 Report:** [`reports/module-2.md`](reports/module-2.md) (Tracking, Versioning & Quality Gates)
+- **Module 3 Report:** [`reports/module-3.md`](reports/module-3.md) (Serving, Orchestration & Load Testing)
+- **Module 4 Report:** [`reports/module-4.md`](reports/module-4.md) (Observability, Monitoring & Retraining)
+- **On-Call Runbooks:** [`docs/runbooks/`](docs/runbooks/) (Actionable Alert Incident Guides)
 - **License:** [MIT License](LICENSE)

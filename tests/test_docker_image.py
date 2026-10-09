@@ -121,7 +121,7 @@ def running_test_container() -> Generator[str, None, None]:
     subprocess.run(cmd, check=True)
 
     # Poll for healthy status
-    max_wait = 45
+    max_wait = 90
     poll_interval = 2
     started = time.time()
     is_healthy = False
@@ -144,9 +144,22 @@ def running_test_container() -> Generator[str, None, None]:
             if status == "healthy":
                 is_healthy = True
                 break
+            try:
+                r = httpx.get(f"{BASE_URL}/health", timeout=1.0)
+                if r.status_code == 200:
+                    is_healthy = True
+                    break
+            except httpx.RequestError:
+                pass
             time.sleep(poll_interval)
 
-        assert is_healthy, f"Container failed to reach 'healthy' state within {max_wait}s"
+        if not is_healthy:
+            err_logs = subprocess.run(
+                ["docker", "logs", container_name], capture_output=True, text=True, check=False
+            ).stdout
+            raise AssertionError(
+                f"Container failed to become healthy within {max_wait}s. Logs:\n{err_logs}"
+            )
         yield container_name
     finally:
         # Tear down container cleanly

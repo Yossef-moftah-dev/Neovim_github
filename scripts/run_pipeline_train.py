@@ -105,16 +105,35 @@ def main() -> None:
     logger.info("Wrote evaluation metrics to %s: %s", metrics_path, eval_results)
 
     # Also log to MLflow if tracking server is up
+    import os
+    import urllib.request
+
+    trk_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+    mlflow_reachable = False
     try:
-        train_and_log_run(
-            experiment_name="arabic-sentiment-classification",
-            run_name="dvc-pipeline-evaluation",
-            params={"pipeline_stage": "dvc_eval", "model_family": "AraBERT"},
-            metrics={"accuracy": eval_results["accuracy"], "macro_f1": eval_results["macro_f1"]},
-            tags={"dvc_stage": "evaluate", "git_commit": eval_results["git_commit"]},
+        with urllib.request.urlopen(f"{trk_uri}/health", timeout=1):
+            mlflow_reachable = True
+    except Exception:  # noqa: BLE001
+        mlflow_reachable = False
+
+    if mlflow_reachable:
+        try:
+            train_and_log_run(
+                experiment_name="arabic-sentiment-classification",
+                run_name="dvc-pipeline-evaluation",
+                params={"pipeline_stage": "dvc_eval", "model_family": "AraBERT"},
+                metrics={
+                    "accuracy": eval_results["accuracy"],
+                    "macro_f1": eval_results["macro_f1"],
+                },
+                tags={"dvc_stage": "evaluate", "git_commit": eval_results["git_commit"]},
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.info("MLflow server logging skipped during pipeline stage: %s", exc)
+    else:
+        logger.info(
+            "MLflow tracking server unreachable at %s; skipping remote run logging.", trk_uri
         )
-    except Exception as exc:  # noqa: BLE001
-        logger.info("MLflow server logging skipped during pipeline stage: %s", exc)
 
     print(f"Pipeline training and evaluation completed. Metrics saved to {metrics_path}")
 

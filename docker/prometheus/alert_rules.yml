@@ -1,0 +1,74 @@
+groups:
+  - name: prodml_operational_alerts
+    rules:
+      - alert: HighInferenceLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(prodml_http_request_duration_seconds_bucket{endpoint=~"/predict.*"}[2m])) by (le)) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+          service: prodml-serving
+        annotations:
+          summary: "p95 inference latency exceeded SLA (> 100ms)"
+          description: "Production p95 latency is {{ $value | humanizeDuration }}, exceeding the 100ms operational threshold."
+          immediate_action: "Execute `serving/canary_promote.sh rollback` if canary is live, or scale container CPU limits."
+          runbook_url: "https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/blob/main/docs/runbooks/high_latency.md"
+
+      - alert: HighHTTP5xxErrorRate
+        expr: sum(rate(prodml_http_requests_total{status=~"5.."}[2m])) / clamp_min(sum(rate(prodml_http_requests_total[2m])), 0.001) > 0.02
+        for: 1m
+        labels:
+          severity: critical
+          service: prodml-serving
+        annotations:
+          summary: "HTTP 5xx server error rate exceeded 2%"
+          description: "Current 5xx error proportion is {{ $value | humanizePercentage }} of total traffic."
+          immediate_action: "Inspect container error logs: `docker compose logs -n 100 prodml-service`; restart service if memory corrupted."
+          runbook_url: "https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/blob/main/docs/runbooks/http_5xx_errors.md"
+
+      - alert: CriticalPredictionDrift
+        expr: prodml_drift_detected{metric=~"psi|wasserstein|chi_square"} == 1
+        for: 1m
+        labels:
+          severity: warning
+          service: prodml-monitoring
+        annotations:
+          summary: "Statistical data or prediction distribution drift detected"
+          description: "Feature or output distribution {{ $labels.feature }} has drifted according to metric {{ $labels.metric }}."
+          immediate_action: "Inspect drift report in `reports/evidently_drift_report.html` and verify closed-loop retraining status via `monitoring/retraining_trigger.py`."
+          runbook_url: "https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/blob/main/docs/runbooks/prediction_drift.md"
+
+      - alert: ModelUnloadedOrServiceDegraded
+        expr: prodml_model_loaded == 0 or up{job="prodml-service"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: prodml-serving
+        annotations:
+          summary: "Inference model is unloaded or service is down"
+          description: "Model memory residency is absent or the endpoint failed health checks."
+          immediate_action: "Trigger dynamic model reload via `curl -X POST http://localhost:8000/model/reload` or restart prodml-service container."
+          runbook_url: "https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/blob/main/docs/runbooks/service_unloaded.md"
+
+      - alert: LowPredictionConfidenceAnomaly
+        expr: sum(rate(prodml_prediction_confidence_sum[5m])) / clamp_min(sum(rate(prodml_prediction_confidence_count[5m])), 0.001) < 0.65
+        for: 2m
+        labels:
+          severity: warning
+          service: prodml-model
+        annotations:
+          summary: "Average sentiment prediction confidence dropped below 65%"
+          description: "Mean prediction confidence is {{ $value | humanizePercentage }}, suggesting domain shift or out-of-vocabulary inputs."
+          immediate_action: "Sample incoming customer reviews from logs to check for non-Arabic characters, emojis, or platform dialect shifts."
+          runbook_url: "https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/blob/main/docs/runbooks/confidence_anomaly.md"
+
+      - alert: BatchQueueSaturation
+        expr: histogram_quantile(0.90, sum(rate(prodml_batch_size_bucket[5m])) by (le)) >= 60
+        for: 2m
+        labels:
+          severity: warning
+          service: prodml-batching
+        annotations:
+          summary: "Dynamic micro-batch size saturated (> 60 items)"
+          description: "BentoML micro-batch queue is operating near maximum capacity (64 limit)."
+          immediate_action: "Scale up worker replica instances or adjust max_batch_size in `serving/service.py`."
+          runbook_url: "https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/blob/main/docs/runbooks/batch_saturation.md"

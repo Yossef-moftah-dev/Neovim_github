@@ -1,7 +1,7 @@
 [project]
 name = "prodml"
-version = "0.3.0"
-description = "Production Arabic sentiment platform with serving orchestration, BentoML micro-batching, and canary deployment"
+version = "0.4.0"
+description = "Production Arabic sentiment platform with serving orchestration, BentoML micro-batching, and complete observability"
 readme = "README.md"
 authors = [
     { name = "Yossef Moftah", email = "yossefmoftah000@gmail.com" }
@@ -23,6 +23,9 @@ dependencies = [
     "pandas>=2.2.0",
     "bentoml>=1.4.0",
     "locust>=2.30.0",
+    "prometheus-client>=0.20.0",
+    "evidently>=0.7.0",
+    "psycopg2-binary>=2.9.0",
 ]
 
 [project.scripts]
@@ -67,5 +70,5 @@ extend-exclude = ["notebooks"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 addopts = "-v --tb=short"
