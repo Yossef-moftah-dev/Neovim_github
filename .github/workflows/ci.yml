@@ -1,10 +1,15 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, module-2-tracking-automation, module-1-packaging]
+    branches: [main, module-*]
+    tags: ['v*']
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   lint-and-test:
@@ -28,56 +33,135 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Run Ruff Linter
-        run: uv run ruff check src/ tests/ scripts/
+        run: uv run ruff check src/ tests/ scripts/ monitoring/
 
       - name: Check Formatting
-        run: uv run ruff format --check src/ tests/ scripts/
+        run: uv run ruff format --check src/ tests/ scripts/ monitoring/
 
       - name: Run Pytest with Coverage (>= 70%)
-        run: uv run pytest --cov=src/prodml --cov-report=term-missing --cov-fail-under=70
+        run: uv run pytest --cov=src/prodml --cov=monitoring --cov-report=term-missing --cov-fail-under=70
 
       - name: Enforce Model Quality Gate
         run: uv run python scripts/model_quality_gate.py --metrics reports/eval_metrics.json
 
-  docker-build:
-    name: Docker Build & Image Publishing
+  docker-build-and-publish:
+    name: Build, Verify & Publish OCI Package
     needs: [lint-and-test]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+      image_name: ghcr.io/${{ steps.repo-owner.outputs.lowercase }}/arabic-sentiment-arabert
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Determine Lowercase Repository Owner
+        id: repo-owner
+        run: echo "lowercase=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub (if secrets configured)
-        if: github.ref == 'refs/heads/main' && env.DOCKERHUB_USERNAME != ''
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      - name: Log in to GitHub Container Registry (GHCR)
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Determine Docker tags
+      - name: Extract Docker Metadata (Tags & OCI Labels)
         id: meta
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-        run: |
-          TAGS="prodml-service:latest,prodml-service:${{ github.sha }}"
-          if [ -n "$DOCKERHUB_USERNAME" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            TAGS="$TAGS,$DOCKERHUB_USERNAME/prodml-service:latest,$DOCKERHUB_USERNAME/prodml-service:${{ github.sha }}"
-            echo "push=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "push=false" >> "$GITHUB_OUTPUT"
-          fi
-          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ steps.repo-owner.outputs.lowercase }}/arabic-sentiment-arabert
+          tags: |
+            type=sha,format=long,prefix=
+            type=sha,format=short,prefix=sha-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
 
-      - name: Build and Push Docker image
+      - name: Build Local Image for Pre-Flight Smoke Test
         uses: docker/build-push-action@v5
         with:
           context: .
           file: docker/Dockerfile
-          load: ${{ steps.meta.outputs.push == 'false' }}
-          push: ${{ steps.meta.outputs.push == 'true' }}
+          load: true
+          tags: prodml-service:verification
+          cache-from: type=gha
+
+      - name: Execute Pre-Flight Container Health Verification
+        run: |
+          docker run -d --name test-container -p 8000:8000 prodml-service:verification
+          for i in {1..30}; do
+            if curl -s -f http://localhost:8000/health > /dev/null 2>&1; then
+              echo "✓ Pre-flight health check passed (HTTP 200 OK)."
+              docker rm -f test-container
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "✗ Container failed health check within 60s!"
+          docker logs test-container
+          docker rm -f test-container
+          exit 1
+
+      - name: Build and Push OCI Image to GHCR
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
           tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Production Deployment & Verification
+    needs: [docker-build-and-publish]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://github.com/${{ github.repository }}/packages
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Deployment Configuration
+        run: |
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh --help
+
+      - name: Deploy to Remote Production Host (EC2)
+        if: env.EC2_HOST != '' && env.EC2_SSH_KEY != ''
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER || 'ubuntu' }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$EC2_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh -o StrictHostKeyChecking=no "$EC2_USER@$EC2_HOST" \
+            "cd ~/arabic-sentiment-arabert && git pull && ./scripts/deploy.sh --tag ${{ github.sha }}"
+
+      - name: Output Deployment & Pull Instructions
+        run: |
+          echo "========================================================================"
+          echo "🎉 ProdML OCI Container Package Published & Verified!"
+          echo "========================================================================"
+          echo "Pull by Git Commit SHA:"
+          echo "  docker pull ghcr.io/${{ steps.repo-owner.outputs.lowercase || 'yossef-moftah-dev' }}/arabic-sentiment-arabert:${{ github.sha }}"
+          echo "Pull by Latest:"
+          echo "  docker pull ghcr.io/${{ steps.repo-owner.outputs.lowercase || 'yossef-moftah-dev' }}/arabic-sentiment-arabert:latest"
+          echo "Run with Docker Compose:"
+          echo "  PRODML_IMAGE=ghcr.io/${{ steps.repo-owner.outputs.lowercase || 'yossef-moftah-dev' }}/arabic-sentiment-arabert:${{ github.sha }} docker compose up -d"
+          echo "========================================================================"

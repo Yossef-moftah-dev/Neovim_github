@@ -6,6 +6,7 @@ and live HTTP inference endpoints.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import time
@@ -14,7 +15,7 @@ from collections.abc import Generator
 import httpx
 import pytest
 
-IMAGE_NAME = "prodml-service:latest"
+IMAGE_NAME = os.getenv("PRODML_IMAGE", "prodml-service:latest")
 TEST_PORT = 8005
 BASE_URL = f"http://127.0.0.1:{TEST_PORT}"
 

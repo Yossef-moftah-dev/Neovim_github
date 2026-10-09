@@ -46,6 +46,42 @@ curl -X POST http://localhost:8000/predict \
 
 ---
 
+## 📦 GitHub Container Registry (GHCR) & Deployment
+
+The serving service is automatically verified, built, and published to **GitHub Container Registry (GHCR)** on every release and commit:
+
+### 1. Pull Pre-Built Image
+```bash
+# Pull by specific Git commit SHA (deterministic reproducible artifact)
+docker pull ghcr.io/yossef-moftah-dev/arabic-sentiment-arabert:<commit_sha>
+
+# Pull latest stable release
+docker pull ghcr.io/yossef-moftah-dev/arabic-sentiment-arabert:latest
+```
+
+### 2. Standalone Container Execution
+```bash
+docker run -d --name prodml-service \
+  -p 8000:8000 \
+  -v $(pwd)/outputs/final_model:/app/outputs/final_model:ro \
+  ghcr.io/yossef-moftah-dev/arabic-sentiment-arabert:latest
+```
+
+### 3. Zero-Downtime Deployment & Automated Rollback (`scripts/deploy.sh`)
+The repository includes [`scripts/deploy.sh`](scripts/deploy.sh), an idempotent deployment script featuring **automated healthcheck validation and sub-second rollback**:
+```bash
+# Deploy a specific Git commit SHA or release tag
+./scripts/deploy.sh --tag 28d5d6e13e819e1f68e23ef39e0f516606036ec2
+
+# Deploy the latest GHCR package
+./scripts/deploy.sh --latest
+
+# Immediately rollback to previous active container
+./scripts/deploy.sh --rollback
+```
+
+---
+
 ## ☁️ EC2 Deployment & Automation Script
 
 The repository includes [`EC2_instance_setup.sh`](EC2_instance_setup.sh), a single-command provisioning script for Ubuntu, Debian, Amazon Linux, and RHEL instances:
