@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/actions/workflows/ci.yml/badge.svg)](https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/badge/Release-v0.4.0-blue.svg)](pyproject.toml)
-[![Tests](https://img.shields.io/badge/Tests-51%20Passed-brightgreen.svg)](tests/)
-[![Coverage](https://img.shields.io/badge/Coverage-74%25-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-68%20Passed-brightgreen.svg)](tests/)
+[![Coverage](https://img.shields.io/badge/Coverage-71%25-brightgreen.svg)](tests/)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
