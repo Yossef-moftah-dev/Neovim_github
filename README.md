@@ -1,17 +1,90 @@
-# ProdML — Arabic Sentiment Analysis & MLOps Platform
+<div align="center">
+
+<!-- Replace with your banner: 1280x320 PNG, "نظرة | Nazra" -->
+<img src="docs/assets/banner.png" alt="Nazra (نظرة)" width="100%"/>
+
+# نظرة · Nazra
+
+**Arabic sentiment analysis, served like it's production, because it is.**
+
+An end-to-end MLOps platform around AraBERT: train, track, serve, monitor, and retrain automatically.
 
 [![CI](https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/actions/workflows/ci.yml/badge.svg)](https://github.com/Yossef-moftah-dev/arabic-sentiment-arabert/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/badge/Release-v0.4.0-blue.svg)](pyproject.toml)
 [![Tests](https://img.shields.io/badge/Tests-68%20Passed-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/Coverage-71%25-brightgreen.svg)](tests/)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](pyproject.toml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Airflow](https://img.shields.io/badge/Airflow-2.9+-017CEE?logo=apacheairflow&logoColor=white)](https://airflow.apache.org/)
+[![MLflow](https://img.shields.io/badge/MLflow-tracked-0194E2?logo=mlflow&logoColor=white)](https://mlflow.org/)
+[![Triton](https://img.shields.io/badge/NVIDIA-Triton-76B900?logo=nvidia&logoColor=white)](https://github.com/triton-inference-server)
+[![Docker](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Production-grade Arabic sentiment classification service and end-to-end MLOps platform powered by AraBERT. Features Apache Airflow 2.9+ pipeline orchestration, high-throughput BentoML dynamic micro-batching, NVIDIA Triton & ONNX Runtime accelerated serving, Nginx canary routing with automated sub-second rollback, reproducible DVC pipelines, full MLflow experiment governance, and complete production observability (Prometheus, Grafana as code, Alertmanager, Evidently drift monitoring, and closed-loop retraining).
+[Quick Start](#-quick-start) · [Architecture](#-architecture) · [Benchmarks](#-benchmarks) · [Services](#-platform-architecture--services) · [Deployment](#-github-container-registry-ghcr--deployment) · [Observability](#-production-observability--closed-retraining-loop) · [Docs](#-documentation--reports)
+
+</div>
 
 ---
 
-## ⚡ Quickstart
+## ✨ See it in action
+
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"text": "الخدمة كانت ممتازة والتوصيل سريع جداً"}'
+```
+```json
+{
+  "label": "positive",
+  "confidence": 0.97,
+  "model_version": "v2",
+  "latency_ms": 18.5
+}
+```
+
+<!-- Add a GIF here: terminal request + Grafana dashboard + canary rollback -->
+<p align="center"><img src="docs/assets/demo.gif" alt="Nazra Live Demo" width="85%"/></p>
+
+## 🎯 Why Nazra?
+
+Most sentiment projects stop at a notebook. Nazra covers everything after it:
+
+| | |
+|---|---|
+| ⚡ **Fast** | ONNX Runtime + Triton, BentoML dynamic micro-batching |
+| 🛡️ **Safe releases** | Nginx canary routing with sub-second automated rollback |
+| 🔁 **Self-healing** | Evidently drift detection triggers retraining automatically |
+| 🔬 **Reproducible** | DVC pipelines + MLflow tracking and model registry |
+| 📊 **Observable** | Prometheus, Grafana as code, Alertmanager |
+
+## 📈 Benchmarks
+
+| Metric | Baseline FastAPI | BentoML Dynamic Batching | Accelerated ONNX / Triton | Notes / Impact |
+|---|:---:|:---:|:---:|---|
+| **p95 latency (batch=1)** | `118.5 ms` | `42.1 ms` | `34.1 ms` | **-71.2% latency reduction** |
+| **Throughput** | `14.2 req/s` | `48.6 req/s` | `83.3 req/s` | **+486% throughput on CPU/GPU** |
+| **ONNX vs PyTorch speedup** | `1.0x` | `1.8x` | `2.6x` | **Zero SLA breaches (>100ms)** |
+| **Canary rollback time** | — | — | `< 1 s` | Health-gated automated rollback |
+| **Champion Macro F1** | `0.825` | `0.862` | `0.887` | **AraBERT Champion (89.8% Val Acc)** |
+
+## 🏗️ Architecture
+
+```mermaid
+flowchart LR
+    D[(Data / DVC)] --> A[Airflow Pipeline]
+    A --> T[AraBERT Training]
+    T --> M[MLflow Registry]
+    M --> O[ONNX Export]
+    O --> S{Nginx Canary}
+    S -->|95%| V1[BentoML / Triton Prod]
+    S -->|5%| V2[BentoML / Triton Canary]
+    V1 & V2 --> P[Prometheus]
+    P --> G[Grafana + Alertmanager]
+    V1 & V2 --> E[Evidently Drift]
+    E -->|drift detected| A
+```
+
+## 🚀 Quick Start
 
 ```bash
 # 1. Clone repository
@@ -25,6 +98,13 @@ curl -X POST http://localhost:8000/predict \
   -H "Content-Type: application/json" \
   -d '{"text": "المنتج رائع جدا وأنصح به بشدة"}'
 ```
+
+Then open service endpoints:
+- **Inference API**: [`http://localhost:8000`](http://localhost:8000) (Swagger Docs at `/docs`)
+- **Grafana Observability**: [`http://localhost:3000`](http://localhost:3000) (`admin` / `admin`)
+- **MLflow Tracking**: [`http://localhost:5000`](http://localhost:5000)
+- **Airflow Orchestration**: [`http://localhost:8080`](http://localhost:8080) (`admin` / `admin`)
+- **MinIO Storage Console**: [`http://localhost:9001`](http://localhost:9001) (`minioadmin` / `minioadmin`)
 
 ---
 
